@@ -1,0 +1,35 @@
+# /etc/weather/config.ini
+# Configuration file for the Weather Network data center
+# Copy to /etc/weather/config.ini and fill in your credentials.
+
+[mqtt]
+# Address of the MQTT broker (university server or TTN MQTT)
+host     = localhost
+port     = 1883
+# Set to "true" to enable TLS
+tls      = false
+# Leave blank if the broker does not require authentication
+username =
+password =
+# Topic pattern – must match what the TTN bridge publishes
+topic    = weather/stations/#
+client_id = weather-datacenter
+keepalive = 60
+
+[database]
+host     = localhost
+port     = 3306
+user     = weather
+password = CHANGE_ME
+database = weather_network
+
+[storage]
+# Directory where sky images are stored
+image_dir = /var/weather/images
+
+[api]
+# Internal API server (used by the web frontend)
+host = 0.0.0.0
+port = 5000
+# Number of measurements to return per page
+page_size = 100

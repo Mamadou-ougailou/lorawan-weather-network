@@ -1,0 +1,21 @@
+[Unit]
+Description=Weather Network API Server
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=weather
+Group=weather
+WorkingDirectory=/opt/weather
+ExecStart=/opt/weather/venv/bin/python3 /opt/weather/web/backend/api_server.py \
+    --config /etc/weather/config.ini
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+Environment=FLASK_ENV=production
+
+[Install]
+WantedBy=multi-user.target
