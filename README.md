@@ -1,42 +1,42 @@
-# LoRaWAN Weather Network
+# Réseau météo LoRaWAN
 
-Distributed weather monitoring network connecting three educational institutions
-in the **Alpes-Maritimes** department of France:
+Réseau distribué de surveillance météorologique reliant trois établissements
+d’enseignement dans le département des **Alpes-Maritimes** :
 
-| # | Site | City | Altitude |
+| # | Site | Ville | Altitude |
 |---|------|------|---------|
 | 1 | Collège de Mougins | Mougins | 260 m |
 | 2 | Lycée de Grasse    | Grasse  | 333 m |
 | 3 | IUT Nice Côte d'Azur | Nice  | 25 m  |
 
-## System Architecture
+## Architecture du système
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│  Field stations (×3)                                             │
+│  Stations de terrain (×3)                                        │
 │  Heltec WiFi LoRa 32 (ESP32)                                     │
-│  BME280 (T/H/P) + TSL2591 (lux) + Camera (sky images)           │
+│  BME280 (T/H/P) + TSL2591 (lux) + Caméra (images du ciel)       │
 └────────────┬─────────────────────────────────────────────────────┘
              │ LoRaWAN (EU868, OTAA)
              ▼
 ┌──────────────────────────────┐
-│  The Things Network (TTN)    │
-│  Application: weather-network │
-│  Payload formatter (JS)      │
+│  The Things Network (TTN)     │
+│  Application : weather-network│
+│  Formateur de payload (JS)    │
 └────────────┬─────────────────┘
              │ MQTT / Webhook
              ▼
 ┌──────────────────────────────┐
-│  University MQTT broker      │
-│  topic: weather/stations/#   │
+│  Broker MQTT universitaire    │
+│  topic : weather/stations/#   │
 └────────────┬─────────────────┘
              │ WireGuard VPN
              ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│  Raspberry Pi data center (500 GB SSD)                           │
+│  Centre de données Raspberry Pi (SSD 500 Go)                     │
 │  ┌──────────────────┐  ┌────────────────────┐                   │
-│  │ mqtt_subscriber  │  │   api_server        │                   │
-│  │ (Python)         │→ │   (Flask REST API)  │→ Web frontend     │
+│  │ mqtt_subscriber  │  │   api_server         │                  │
+│  │ (Python)         │→ │   (API REST Flask)   │→ Frontend web    │
 │  └──────────┬───────┘  └────────────────────┘                   │
 │             ▼                                                     │
 │      MariaDB (weather_network)                                   │
@@ -45,99 +45,100 @@ in the **Alpes-Maritimes** department of France:
              │ HTTP
              ▼
 ┌──────────────────────────────┐
-│  Public web dashboard        │
-│  Real-time + historical      │
-│  comparison of 3 stations    │
+│  Tableau de bord web public  │
+│  Temps réel + historique     │
+│  comparaison de 3 stations   │
 └──────────────────────────────┘
 ```
 
-## Repository Structure
+## Structure du dépôt
 
 ```
 lorawan-weather-network/
 ├── firmware/
 │   ├── weather_station/
-│   │   └── weather_station.ino   ESP32 Heltec LoRaWAN firmware
-│   └── README.md                 Hardware, libraries, payload format
+│   │   └── weather_station.ino   Firmware LoRaWAN ESP32 Heltec
+│   └── README.md                 Matériel, bibliothèques, format payload
 ├── ttn/
-│   ├── payload_formatter.js      TTN uplink/downlink payload formatter
-│   └── README.md                 TTN application setup guide
+│   ├── payload_formatter.js      Formateur de payload uplink/downlink TTN
+│   └── README.md                 Guide de configuration de l’application TTN
 ├── datacenter/
-│   ├── mqtt_subscriber.py        MQTT → MariaDB subscriber (Python)
-│   ├── config.ini.example        Configuration template
-│   ├── requirements.txt          Python dependencies
+│   ├── mqtt_subscriber.py        Abonné MQTT → MariaDB (Python)
+│   ├── config.ini.example        Modèle de configuration
+│   ├── requirements.txt          Dépendances Python
 │   ├── database/
-│   │   └── schema.sql            MariaDB schema
+│   │   └── schema.sql            Schéma MariaDB
 │   ├── vpn/
-│   │   ├── wg0-server.conf       WireGuard server config (university)
-│   │   ├── wg0-client.conf       WireGuard client config (Raspberry Pi)
-│   │   └── README.md             VPN setup guide
+│   │   ├── wg0-server.conf       Config serveur WireGuard (université)
+│   │   ├── wg0-client.conf       Config client WireGuard (Raspberry Pi)
+│   │   └── README.md             Guide d’installation VPN
 │   ├── scripts/
-│   │   ├── weather-subscriber.service  Systemd unit
-│   │   ├── weather-api.service         Systemd unit
-│   │   └── aggregate_hourly.sh         Cron: refresh hourly stats
-│   └── README.md                 Data center setup guide
+│   │   ├── weather-subscriber.service  Unité systemd
+│   │   ├── weather-api.service         Unité systemd
+│   │   └── aggregate_hourly.sh         Cron : mise à jour des stats horaires
+│   └── README.md                 Guide de mise en place du centre de données
 └── web/
     ├── backend/
-    │   └── api_server.py         Flask REST API
+  │   └── api_server.py         API REST Flask
     └── frontend/
-        ├── index.html            Public dashboard
-        ├── css/style.css         Styles
-        └── js/app.js             Chart.js + Leaflet frontend logic
+    ├── index.html            Tableau de bord public
+    ├── css/style.css         Styles
+    └── js/app.js             Logique frontend Chart.js + Leaflet
 ```
 
-## Quick Start
+## Démarrage rapide
 
 ### Firmware
 
-See [firmware/README.md](firmware/README.md).
+Voir [firmware/README.md](firmware/README.md).
 
 ### TTN
 
-See [ttn/README.md](ttn/README.md).
+Voir [ttn/README.md](ttn/README.md).
 
-### Data Center (Raspberry Pi)
+### Centre de données (Raspberry Pi)
 
-See [datacenter/README.md](datacenter/README.md).
+Voir [datacenter/README.md](datacenter/README.md).
 
-### Web Dashboard
+### Tableau de bord web
 
-The frontend is a static HTML/CSS/JS site. Serve it with any web server:
+Le frontend est un site statique HTML/CSS/JS. Servez-le avec n’importe quel serveur web :
 
 ```bash
-# Development (Python built-in server)
+# Développement (serveur intégré Python)
 cd web/frontend
 python3 -m http.server 8080
 
 # Production (nginx)
-# Copy web/frontend/ to /var/www/weather/
-# Configure nginx to proxy /api/ to localhost:5000
+# Copier web/frontend/ vers /var/www/weather/
+# Configurer nginx pour proxyfier /api/ vers localhost:5000
 ```
 
-Configure `API_BASE` in `web/frontend/js/app.js` if the API server is on a
-different host.
+Configurez `API_BASE` dans `web/frontend/js/app.js` si le serveur API est sur
+un hôte différent.
 
-## Measured Parameters
+## Paramètres mesurés
 
-| Parameter | Sensor | Unit |
+| Paramètre | Capteur | Unité |
 |-----------|--------|------|
-| Temperature | BME280 | °C |
-| Relative Humidity | BME280 | % |
-| Atmospheric Pressure | BME280 | hPa |
-| Ambient Light (lux) | TSL2591 | lux |
-| Sky Image | OV2640 | JPEG |
-| Battery | ADC (Heltec V2) | % |
+| Température | BME280 | °C |
+| Humidité relative | BME280 | % |
+| Pression atmosphérique | BME280 | hPa |
+| Luminosité ambiante (lux) | TSL2591 | lux |
+| Image du ciel | OV2640 | JPEG |
+| Batterie | ADC (Heltec V2) | % |
 
-## Transmission Schedule
+## Fréquence de transmission
 
-- Sensor data: every **5 minutes** (configurable)
-- Sky images: every **30 minutes** (configurable)
+- Données capteurs : toutes les **5 minutes** (configurable)
+- Images du ciel : toutes les **30 minutes** (configurable)
 
-## Security
+## Sécurité
 
-- All traffic between the university infrastructure and the Raspberry Pi
-  data center flows through a **WireGuard VPN** tunnel.
-- The MariaDB database user has only `SELECT`, `INSERT`, `UPDATE` privileges
-  (no `DROP`, `DELETE`, `CREATE`).
-- The API server exposes only read endpoints; no authentication is required
-  for the public dashboard (read-only data).
+- Tout le trafic entre l’infrastructure universitaire et le centre de données
+  Raspberry Pi passe par un tunnel **VPN WireGuard**.
+- L’utilisateur de la base MariaDB ne possède que les privilèges `SELECT`,
+  `INSERT`, `UPDATE` (pas de `DROP`, `DELETE`, `CREATE`).
+- Le serveur API n’expose que des endpoints en lecture ; aucune
+  authentification n’est requise pour le tableau de bord public (données
+  en lecture seule).

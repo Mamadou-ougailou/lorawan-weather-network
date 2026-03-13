@@ -11,8 +11,22 @@
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 // Change this to your API server URL if served from a different origin.
-const API_BASE = "";   // empty = same origin; or "http://10.200.0.2:5000"
+const API_BASE = "http://localhost:5000/";
 const REFRESH_INTERVAL_MS = 60_000;  // auto-refresh every 60 s
+
+const ROUTES = {
+  latest: "/api/latest",
+  compare: (hours) => `/api/compare?hours=${hours}`,
+  history: (site, hours) => `/api/history?site=${site}&hours=${hours}`,
+  images: (site, limit = 12) =>
+    site ? `/api/images?site=${site}&limit=${limit}` : `/api/images?limit=${limit}`,
+  measurements: (site, limit = 1) => `/api/measurements?site=${site}&limit=${limit}`,
+};
+
+const API_ORIGIN = API_BASE
+  ? new URL(API_BASE, window.location.href).origin
+  : window.location.origin;
+const IS_CROSS_ORIGIN_API = API_ORIGIN !== window.location.origin;
 
 // ─── Site colours (must match CSS variables) ─────────────────────────────────
 const SITE_COLORS = {
@@ -35,9 +49,16 @@ const charts = {};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 async function apiFetch(path) {
-  const res = await fetch(API_BASE + path);
+  const url = API_BASE ? new URL(path, API_BASE).toString() : path;
+  const res = await fetch(url, {
+    mode: IS_CROSS_ORIGIN_API ? "cors" : "same-origin",
+  });
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json();
+}
+
+function apiAssetUrl(path) {
+  return API_BASE ? new URL(path, API_BASE).toString() : path;
 }
 
 function fmt(v, decimals = 1) {
@@ -89,7 +110,7 @@ function initNavigation() {
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const latest = await apiFetch("/api/latest");
+    const latest = await apiFetch(ROUTES.latest);
     latest.forEach(row => updateCard(row));
     document.getElementById("last-update").textContent =
       "Updated: " + new Date().toLocaleTimeString();
@@ -99,7 +120,7 @@ async function loadDashboard() {
 
   // Quick temperature chart (6 h)
   try {
-    const data = await apiFetch("/api/compare?hours=6");
+    const data = await apiFetch(ROUTES.compare(6));
     renderCompareChart("chart-temp-6h", data, "temp_avg", "Temperature (°C)", 6);
   } catch (e) {
     console.warn("Could not load 6h chart:", e.message);
@@ -139,7 +160,7 @@ async function loadCompare() {
   const hours   = document.getElementById("compare-hours").value;
   const varKey  = document.getElementById("compare-var").value;
   try {
-    const data = await apiFetch(`/api/compare?hours=${hours}`);
+    const data = await apiFetch(ROUTES.compare(hours));
     renderCompareChart("chart-compare", data, varKey,
       document.getElementById("compare-var").selectedOptions[0].text, hours);
   } catch (e) {
@@ -204,7 +225,7 @@ async function loadHistory() {
   const site  = document.getElementById("history-site").value;
   const hours = document.getElementById("history-hours").value;
   try {
-    const data = await apiFetch(`/api/history?site=${site}&hours=${hours}`);
+    const data = await apiFetch(ROUTES.history(site, hours));
     renderHistoryCharts(data);
   } catch (e) {
     console.warn("History load failed:", e.message);
@@ -271,7 +292,7 @@ function renderHistoryCharts(rows) {
 // ─── Sky images gallery ──────────────────────────────────────────────────────
 async function loadSkyImages() {
   const site = document.getElementById("sky-site").value;
-  const url  = site ? `/api/images?site=${site}&limit=12` : "/api/images?limit=12";
+  const url  = ROUTES.images(site, 12);
   const gallery = document.getElementById("sky-gallery");
   gallery.innerHTML = "<p class='placeholder'>Loading…</p>";
   try {
@@ -282,7 +303,8 @@ async function loadSkyImages() {
     }
     gallery.innerHTML = images.map(img => `
       <div class="sky-card">
-        <img src="${img.url}" alt="Sky from ${img.site_name || "station"}"
+        <img src="${apiAssetUrl(img.url)}" alt="Sky from ${img.site_name || "station"}"
+             crossorigin="anonymous"
              loading="lazy" onerror="this.style.display='none'" />
         <div class="sky-card-meta">
           <strong>${SITE_NAMES[img.site_id] || "Station " + img.site_id}</strong>
@@ -320,7 +342,7 @@ function initMap() {
     marker.bindPopup(`<b>${SITE_NAMES[id]}</b><br>Loading…`);
     marker.on("popupopen", async () => {
       try {
-        const rows = await apiFetch(`/api/measurements?site=${id}&limit=1`);
+        const rows = await apiFetch(ROUTES.measurements(id, 1));
         if (rows.length) {
           const r = rows[0];
           marker.getPopup().setContent(`
