@@ -1,7 +1,7 @@
 /**
  * app.js – Weather Network frontend
  *
- * Fetches data from the REST API (api_server.py) and renders:
+ * Fetches data from the REST API (Node.js/Express backend) and renders:
  *  - Live station cards (Dashboard)
  *  - Cross-site comparison chart
  *  - Per-station history charts
@@ -11,7 +11,7 @@
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 // Change this to your API server URL if served from a different origin.
-const API_BASE = "http://localhost:5000/";
+const API_BASE = "http://localhost:3000/";
 const REFRESH_INTERVAL_MS = 60_000;  // auto-refresh every 60 s
 
 const ROUTES = {
@@ -39,9 +39,9 @@ const SITE_NAMES = { 1: "Mougins", 2: "Grasse", 3: "Nice" };
 
 // ─── Station coordinates ─────────────────────────────────────────────────────
 const SITE_COORDS = {
-  1: [43.600000,  7.005000],   // Mougins
-  2: [43.658333,  6.925000],   // Grasse
-  3: [43.710173,  7.261953],   // Nice
+  1: [43.600000, 7.005000],   // Mougins
+  2: [43.658333, 6.925000],   // Grasse
+  3: [43.710173, 7.261953],   // Nice
 };
 
 // ─── Chart registry ──────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ function fmt(v, decimals = 1) {
 function timeAgo(isoString) {
   const diff = Date.now() - new Date(isoString).getTime();
   const m = Math.floor(diff / 60_000);
-  if (m < 1)  return "just now";
+  if (m < 1) return "just now";
   if (m < 60) return `${m} min ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h} h ago`;
@@ -85,13 +85,13 @@ function makeChart(id, config) {
 
 // ─── Section navigation ──────────────────────────────────────────────────────
 function initNavigation() {
-  const navLinks  = document.querySelectorAll(".nav-link");
-  const sections  = document.querySelectorAll(".section");
+  const navLinks = document.querySelectorAll(".nav-link");
+  const sections = document.querySelectorAll(".section");
 
   function showSection(name) {
     sections.forEach(s => s.classList.toggle("active", s.id === name));
     navLinks.forEach(l => l.classList.toggle("active", l.dataset.section === name));
-    if (name === "map")     initMap();
+    if (name === "map") initMap();
     if (name === "compare") loadCompare();
   }
 
@@ -157,8 +157,8 @@ function updateCard(row) {
 
 // ─── Comparison chart ────────────────────────────────────────────────────────
 async function loadCompare() {
-  const hours   = document.getElementById("compare-hours").value;
-  const varKey  = document.getElementById("compare-var").value;
+  const hours = document.getElementById("compare-hours").value;
+  const varKey = document.getElementById("compare-var").value;
   try {
     const data = await apiFetch(ROUTES.compare(hours));
     renderCompareChart("chart-compare", data, varKey,
@@ -222,7 +222,7 @@ function renderCompareChart(canvasId, rows, field, label, hours) {
 
 // ─── History charts ──────────────────────────────────────────────────────────
 async function loadHistory() {
-  const site  = document.getElementById("history-site").value;
+  const site = document.getElementById("history-site").value;
   const hours = document.getElementById("history-hours").value;
   try {
     const data = await apiFetch(ROUTES.history(site, hours));
@@ -259,10 +259,14 @@ function renderHistoryCharts(rows) {
       plugins: { legend: { labels: { color: "#e2e8f0" } } },
       scales: {
         x: { ticks: { color: "#94a3b8", maxTicksLimit: 10 }, grid: { color: "#334155" } },
-        yT: { position: "left",  title: { display: true, text: "°C", color: "#f97316" },
-               ticks: { color: "#f97316" }, grid: { color: "#334155" } },
-        yH: { position: "right", title: { display: true, text: "%",  color: "#38bdf8" },
-               ticks: { color: "#38bdf8" }, grid: { drawOnChartArea: false } },
+        yT: {
+          position: "left", title: { display: true, text: "°C", color: "#f97316" },
+          ticks: { color: "#f97316" }, grid: { color: "#334155" }
+        },
+        yH: {
+          position: "right", title: { display: true, text: "%", color: "#38bdf8" },
+          ticks: { color: "#38bdf8" }, grid: { drawOnChartArea: false }
+        },
       },
     },
   });
@@ -282,8 +286,10 @@ function renderHistoryCharts(rows) {
       plugins: { legend: { labels: { color: "#e2e8f0" } } },
       scales: {
         x: { ticks: { color: "#94a3b8", maxTicksLimit: 10 }, grid: { color: "#334155" } },
-        y: { title: { display: true, text: "hPa", color: "#94a3b8" },
-             ticks: { color: "#94a3b8" }, grid: { color: "#334155" } },
+        y: {
+          title: { display: true, text: "hPa", color: "#94a3b8" },
+          ticks: { color: "#94a3b8" }, grid: { color: "#334155" }
+        },
       },
     },
   });
@@ -292,7 +298,7 @@ function renderHistoryCharts(rows) {
 // ─── Sky images gallery ──────────────────────────────────────────────────────
 async function loadSkyImages() {
   const site = document.getElementById("sky-site").value;
-  const url  = ROUTES.images(site, 12);
+  const url = ROUTES.images(site, 12);
   const gallery = document.getElementById("sky-gallery");
   gallery.innerHTML = "<p class='placeholder'>Loading…</p>";
   try {
