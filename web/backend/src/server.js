@@ -31,9 +31,12 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
 
-// Allow cross-origin requests (needed when the frontend is served from a
-// different port or domain than the API, e.g. during local development)
-app.use(cors());
+// Allow cross-origin requests from any origin.
+// Using { origin: '*' } explicitly ensures the response header is always
+// "Access-Control-Allow-Origin: *" — including when the frontend is opened
+// directly from the filesystem (file:// sends Origin: null, which the default
+// cors() reflects as-is, and browsers then block it).
+app.use(cors({ origin: "*" }));
 
 // Parse incoming JSON bodies (useful if POST endpoints are added later)
 app.use(express.json());
