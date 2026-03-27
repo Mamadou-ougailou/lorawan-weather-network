@@ -16,7 +16,7 @@ const VAR_OPTIONS = [
   { value: 'pressure_avg',   label: 'Pression (hPa)' },
   { value: 'lux_avg',        label: 'Luminosité (lux)' },
   { value: 'wind_speed_avg', label: 'Vitesse vent (km/h)' },
-  { value: 'rain_speed_avg',  label: 'Vitesse pluie (mm/min)' },
+  { value: 'rain_quantity_avg',  label: 'Vitesse pluie (mm/min)' },
 ];
 
 export default function Compare() {
