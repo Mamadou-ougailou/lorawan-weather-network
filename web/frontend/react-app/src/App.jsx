@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Header  from './components/Header';
+import Sidebar from './components/Sidebar';
+import TopNav  from './components/TopNav';
 import Footer  from './components/Footer';
 import Dashboard from './pages/Dashboard';
 import Compare   from './pages/Compare';
@@ -14,6 +15,7 @@ export default function App() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [lastUpdate,    setLastUpdate]    = useState('');
   const [refreshSignal, setRefreshSignal] = useState(0);
+  const [mobileOpen,    setMobileOpen]    = useState(false);
 
   // Initialiser depuis le hash URL
   useEffect(() => {
@@ -24,6 +26,7 @@ export default function App() {
   const handleNavigate = useCallback((section) => {
     setActiveSection(section);
     window.location.hash = section;
+    setMobileOpen(false);
   }, []);
 
   const handleRefresh = useCallback(() => {
@@ -39,20 +42,18 @@ export default function App() {
 
   return (
     <>
-      <Header
-        activeSection={activeSection}
-        onNavigate={handleNavigate}
-        lastUpdate={lastUpdate}
-        onRefresh={handleRefresh}
-      />
-      <main className="container">
-        {activeSection === 'dashboard' && <Dashboard refreshSignal={refreshSignal} />}
-        {activeSection === 'compare'   && <Compare />}
-        {activeSection === 'history'   && <History />}
-        {activeSection === 'sky'       && <SkyImages />}
-        {activeSection === 'map'       && <Map />}
+      <Sidebar activeSection={activeSection} onNavigate={handleNavigate} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
+      <TopNav lastUpdate={lastUpdate} onRefresh={handleRefresh} setMobileOpen={setMobileOpen} />
+      <main className="lg:ml-64 pt-20 h-screen overflow-y-auto bg-surface transition-colors">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 md:space-y-10">
+          {activeSection === 'dashboard' && <Dashboard refreshSignal={refreshSignal} />}
+          {activeSection === 'compare'   && <Compare />}
+          {activeSection === 'history'   && <History />}
+          {activeSection === 'sky'       && <SkyImages />}
+          {activeSection === 'map'       && <Map />}
+        </div>
+        <Footer />
       </main>
-      <Footer />
     </>
   );
 }

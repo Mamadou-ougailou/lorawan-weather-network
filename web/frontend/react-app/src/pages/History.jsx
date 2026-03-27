@@ -35,31 +35,29 @@ export default function History() {
   }
 
   return (
-    <section>
-      <h2 className="section-title">Données Historiques</h2>
-      <div className="controls">
-        <label>
+    <section className="animate-in fade-in duration-500">
+      <h2 className="text-2xl md:text-3xl font-bold font-headline tracking-tighter text-on-surface mb-6">Données Historiques</h2>
+      <div className="bg-surface-container-high rounded-xl p-6 border border-outline-variant flex flex-wrap gap-6 items-end mb-8 relative z-20">
+        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[150px] max-w-xs">
           Station :
-          <select value={site} onChange={e => setSite(e.target.value)}>
+          <select value={site} onChange={e => setSite(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
             {SITE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
-        <label>
+        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[200px] max-w-xs">
           Période :
-          <select value={hours} onChange={e => setHours(e.target.value)}>
+          <select value={hours} onChange={e => setHours(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
-        <button className="btn" onClick={handleLoad}>Charger</button>
+        <button className="bg-primary hover:bg-primary/90 text-on-primary font-bold rounded-lg px-6 py-2.5 transition-colors shadow-lg shadow-primary/30 min-w-[120px]" onClick={handleLoad}>Charger</button>
       </div>
 
       {charts && (
-        <div className="chart-row">
-          <div className="chart-box half">
-            <div className="chart-header">
-              <h3>Température &amp; Humidité</h3>
-            </div>
-            <div className="chart-container">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 relative z-10 mb-8">
+          <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
+            <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">Température &amp; Humidité</h3>
+            <div className="relative h-[300px] w-full grow">
               <WeatherChart
                 labels={charts.labels}
                 datasets={[
@@ -81,7 +79,6 @@ export default function History() {
                       position: 'left',
                       title: { display: true, text: '°C', color: '#f97316' },
                       ticks: { color: '#f97316' },
-                      grid: { color: '#334155' },
                     },
                     yH: {
                       position: 'right',
@@ -94,11 +91,9 @@ export default function History() {
               />
             </div>
           </div>
-          <div className="chart-box half">
-            <div className="chart-header">
-              <h3>Pression</h3>
-            </div>
-            <div className="chart-container">
+          <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
+            <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">Pression</h3>
+            <div className="relative h-[300px] w-full grow">
               <WeatherChart
                 labels={charts.labels}
                 datasets={[{
@@ -109,35 +104,43 @@ export default function History() {
                 options={{
                   scales: {
                     x: { ticks: { maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
-                    y: { title: { display: true, text: 'hPa', color: '#94a3b8' } },
+                    y: { title: { display: true, text: 'hPa' } },
                   },
                 }}
               />
             </div>
           </div>
-          <div className="chart-box full">
-            <div className="chart-header">
-              <h3>Vents & Air</h3>
-            </div>
-            <div className="chart-container">
+          <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col xl:col-span-2">
+            <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">Vent & Pluie</h3>
+            <div className="relative h-[300px] lg:h-[400px] w-full grow">
               <WeatherChart
                 labels={charts.labels}
                 datasets={[
                   {
                     label: 'Vitesse vent (km/h)',
                     data: charts.rows.map(r => r.wind_speed_avg),
-                    borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 2,
+                    borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yWind',
                   },
                   {
-                    label: 'Vitesse air (km/h)',
-                    data: charts.rows.map(r => r.air_speed_avg),
-                    borderColor: '#fca5a5', fill: false, tension: 0.3, pointRadius: 2,
+                    label: 'Vitesse pluie (mm/min)',
+                    data: charts.rows.map(r => r.rain_speed_avg),
+                    borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yRain',
                   }
                 ]}
                 options={{
                   scales: {
                     x: { ticks: { maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
-                    y: { title: { display: true, text: 'km/h', color: '#94a3b8' } },
+                    yWind: { 
+                      position: 'left',
+                      title: { display: true, text: 'km/h', color: '#fde047' },
+                      ticks: { color: '#fde047' }
+                    },
+                    yRain: {
+                      position: 'right',
+                      title: { display: true, text: 'mm/min', color: '#60a5fa' },
+                      ticks: { color: '#60a5fa' },
+                      grid: { drawOnChartArea: false }
+                    },
                   },
                 }}
               />

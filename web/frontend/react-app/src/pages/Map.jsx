@@ -5,9 +5,9 @@ import { apiFetch, ROUTES, SITE_NAMES, SITE_COLORS, SITE_COORDS, fmt, timeAgo } 
 
 export default function Map() {
   return (
-    <section>
-      <h2 className="section-title">Carte des Stations</h2>
-      <div className="leaflet-map">
+    <section className="animate-in fade-in duration-500 flex flex-col h-full w-full">
+      <h2 className="text-2xl md:text-3xl font-bold font-headline tracking-tighter text-on-surface mb-6 shrink-0">Carte des Stations</h2>
+      <div className="h-[500px] lg:h-[700px] rounded-xl overflow-hidden border border-outline-variant shadow-lg relative z-10 mb-8 w-full">
         <MapContainer
           center={[43.65, 7.05]}
           zoom={10}

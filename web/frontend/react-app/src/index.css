@@ -45,10 +45,6 @@ html {
 
 body {
   font-family: var(--font);
-  background: var(--color-bg-base);
-  background-image: var(--color-bg-gradient);
-  background-attachment: fixed;
-  color: var(--color-text);
   min-height: 100vh;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
