@@ -31,7 +31,7 @@ const router = Router();
  * Each row is enriched with a `url` field pointing to /images/:filename
  * so the frontend can display the image without knowing the image directory.
  */
-router.get("/images", async (req, res) => {
+router.get("/api/images", async (req, res) => {
     const siteId = parseInt(req.query.site, 10) || null;
     const limit = Math.min(parseInt(req.query.limit, 10) || 5, 50);
 

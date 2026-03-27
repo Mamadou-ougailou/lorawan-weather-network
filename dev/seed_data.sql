@@ -10,6 +10,7 @@ SET @now = NOW();
 
 INSERT INTO measurements
     (site_id, received_at, temperature, humidity, pressure, lux,
+     wind_speed, air_speed,
      battery_pct, bme280_ok, tsl2591_ok, camera_ok,
      dev_eui, f_cnt, rssi, snr, raw_payload)
 WITH RECURSIVE seq AS (
@@ -59,6 +60,17 @@ SELECT
         END
         + (RAND() - 0.5) * 30
     ))                                                          AS lux,
+
+    ROUND(
+        CASE s.id WHEN 1 THEN 8.0 WHEN 2 THEN 12.0 WHEN 3 THEN 15.0 END
+        + 4.0 * SIN(2 * PI() * ((seq.n % 144) - 36) / 144)
+        + (RAND() - 0.5) * 5.0,
+    1)                                                          AS wind_speed,
+
+    ROUND(
+        CASE s.id WHEN 1 THEN 2.0 WHEN 2 THEN 3.5 WHEN 3 THEN 4.0 END
+        + (RAND() - 0.5) * 2.0,
+    1)                                                          AS air_speed,
 
     -- Battery: slowly discharging, recharges during day
     LEAST(100, GREATEST(20, ROUND(

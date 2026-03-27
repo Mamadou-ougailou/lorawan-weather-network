@@ -75,6 +75,8 @@ router.get("/compare", async (req, res) => {
       hs.humidity_avg,
       hs.pressure_avg,
       hs.lux_avg,
+      hs.wind_speed_avg,
+      hs.air_speed_avg,
       hs.sample_count
     FROM   hourly_stats hs
     JOIN   sites s ON s.id = hs.site_id
