@@ -4,25 +4,37 @@ Réseau de surveillance météorologique reliant trois établissements des Alpes
 
 ---
 
-## Lancer la stack (Docker)
+## Lancer la stack complète (Docker)
 
 ```bash
 # Depuis la racine du projet
 sudo docker compose up -d --build
 ```
 
-Démarre **MariaDB** (`:3306`) et l'**API Node.js** (`:3000`).
+Démarre **MariaDB** (`:3306`), l'**API Node.js** (`:3000`) et le **Frontend React** (`:80`).
+Vous pourrez accéder à l'interface web finale sur `http://localhost`.
 
 ```bash
-sudo docker compose down   # arrêter
-sudo docker compose logs api -f  # logs de l'API
+sudo docker compose down   # arrêter la stack
+sudo docker compose logs api -f  # voir les logs de l'API
 ```
+
+---
+
+## Lancer le frontend seul (Mode Développement Vite)
+Allez dans le dossier du React et exécutez la commande dev :
+```bash
+cd web/frontend/react-app
+npm install
+npm run dev
+```
+Accès à l'UI sur http://localhost:5173
 
 ---
 
 ## API – Endpoints
 
-Base URL : `http://localhost:3000`
+Base URL API : `http://localhost:3000`
 
 | Méthode | Endpoint | Paramètres | Description |
 |---------|----------|------------|-------------|

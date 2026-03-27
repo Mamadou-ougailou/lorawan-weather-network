@@ -497,6 +497,11 @@ main {
   min-width: 320px;
 }
 
+.chart-box.full {
+  flex: 1 1 100%;
+  min-width: 100%;
+}
+
 /* ─── Controls (Selects & Buttons) ──────────────────────────────────────── */
 .controls {
   display: flex;

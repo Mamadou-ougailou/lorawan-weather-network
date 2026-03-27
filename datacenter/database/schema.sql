@@ -35,6 +35,8 @@ CREATE TABLE IF NOT EXISTS measurements (
     humidity        DECIMAL(5, 2)    COMMENT 'Percent',
     pressure        DECIMAL(7, 2)    COMMENT 'hPa',
     lux             SMALLINT UNSIGNED COMMENT 'lux',
+    wind_speed      DECIMAL(5, 2)    COMMENT 'km/h',
+    air_speed       DECIMAL(5, 2)    COMMENT 'km/h',
     battery_pct     TINYINT UNSIGNED COMMENT 'Battery percent 0-100',
     -- sensor health flags
     bme280_ok       TINYINT(1)       NOT NULL DEFAULT 0,
@@ -77,6 +79,8 @@ CREATE TABLE IF NOT EXISTS hourly_stats (
     humidity_avg    DECIMAL(5, 2),
     pressure_avg    DECIMAL(7, 2),
     lux_avg         DECIMAL(9, 2),
+    wind_speed_avg  DECIMAL(5, 2),
+    air_speed_avg   DECIMAL(5, 2),
     sample_count    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
     PRIMARY KEY (site_id, hour_start),
     CONSTRAINT fk_stats_site FOREIGN KEY (site_id) REFERENCES sites (id)
@@ -95,7 +99,7 @@ BEGIN
 
     INSERT INTO hourly_stats
         (site_id, hour_start, temp_avg, temp_min, temp_max,
-         humidity_avg, pressure_avg, lux_avg, sample_count)
+         humidity_avg, pressure_avg, lux_avg, wind_speed_avg, air_speed_avg, sample_count)
     SELECT
         site_id,
         DATE_FORMAT(received_at, '%Y-%m-%d %H:00:00') AS hour_start,
@@ -105,6 +109,8 @@ BEGIN
         ROUND(AVG(humidity),    2),
         ROUND(AVG(pressure),    2),
         ROUND(AVG(lux),         2),
+        ROUND(AVG(wind_speed),  2),
+        ROUND(AVG(air_speed),   2),
         COUNT(*)
     FROM measurements
     WHERE received_at >= v_from
@@ -116,6 +122,8 @@ BEGIN
         humidity_avg = VALUES(humidity_avg),
         pressure_avg = VALUES(pressure_avg),
         lux_avg      = VALUES(lux_avg),
+        wind_speed_avg = VALUES(wind_speed_avg),
+        air_speed_avg  = VALUES(air_speed_avg),
         sample_count = VALUES(sample_count);
 END$$
 
