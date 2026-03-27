@@ -123,7 +123,7 @@ export default function History() {
                   },
                   {
                     label: 'Vitesse pluie (mm/min)',
-                    data: charts.rows.map(r => r.rain_speed_avg),
+                    data: charts.rows.map(r => r.rain_quantity_avg),
                     borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yRain',
                   }
                 ]}
