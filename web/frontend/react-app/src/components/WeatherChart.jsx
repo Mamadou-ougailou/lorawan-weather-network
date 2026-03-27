@@ -7,27 +7,31 @@ import { Line } from 'react-chartjs-2';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler);
 
-const BASE_OPTIONS = {
-  responsive: true,
-  maintainAspectRatio: false,
-  interaction: { mode: 'index' },
-  plugins: {
-    legend: { labels: { color: '#e2e8f0' } },
-  },
-  scales: {
-    x: {
-      ticks: { color: '#94a3b8', maxTicksLimit: 12 },
-      grid: { color: '#334155' },
-    },
-    y: {
-      ticks: { color: '#94a3b8' },
-      grid: { color: '#334155' },
-    },
-  },
-};
-
-
 export default function WeatherChart({ labels, datasets, options = {} }) {
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const textColor = isDark ? '#94a3b8' : '#64748b'; // slate-400 vs slate-500
+  const titleColor = isDark ? '#e2e8f0' : '#1e293b'; // slate-200 vs slate-800
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+
+  const BASE_OPTIONS = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index' },
+    plugins: {
+      legend: { labels: { color: titleColor, font: { family: "'Space Grotesk', sans-serif", weight: 'bold' } } },
+    },
+    scales: {
+      x: {
+        ticks: { color: textColor, maxTicksLimit: 12, font: { family: "'Manrope', sans-serif", weight: 'bold' } },
+        grid: { color: gridColor },
+      },
+      y: {
+        ticks: { color: textColor, font: { family: "'Manrope', sans-serif", weight: 'bold' } },
+        grid: { color: gridColor },
+      },
+    },
+  };
+
   const merged = deepMerge(BASE_OPTIONS, options);
   const data = { labels, datasets };
 

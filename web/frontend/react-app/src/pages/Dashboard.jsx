@@ -1,14 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, ROUTES, SITE_COLORS, SITE_NAMES, fmt } from '../api';
-import StationCard from '../components/StationCard';
 import WeatherChart from '../components/WeatherChart';
 
 export default function Dashboard({ refreshSignal }) {
-  const [latest, setLatest] = useState({});       // { siteId: row }
-  const [chart6h, setChart6h] = useState(null);   // { labels, datasets }
+  const [latest, setLatest] = useState({});
+  const [chart24h, setChart24h] = useState(null);
+  const [mainStationId, setMainStationId] = useState(1);
 
   const load = useCallback(async () => {
-    // Station cards
     try {
       const rows = await apiFetch(ROUTES.latest);
       const byId = {};
@@ -18,82 +17,185 @@ export default function Dashboard({ refreshSignal }) {
       console.warn('Could not load latest measurements:', e.message);
     }
 
-    // Température 6h
     try {
-      const data = await apiFetch(ROUTES.compare(6));
-      setChart6h(buildCompareDatasets(data, 'temp_avg'));
+      const data = await apiFetch(ROUTES.compare(24));
+      setChart24h(buildCompareDatasets(data, 'temp_avg'));
     } catch (e) {
       console.warn('Could not load 6h chart:', e.message);
     }
   }, []);
 
-  // Chargement initial + auto-refresh
   useEffect(() => { load(); }, [load, refreshSignal]);
 
+  const mainId = mainStationId;
+  const otherIds = [1, 2, 3].filter(id => id !== mainId);
+  const sMain = latest[mainId] || {};
+
+  const getSiteTag = (id) => {
+    if (id === 1) return { text: "Mougins Center", color: "text-primary", bg: "bg-primary/10" };
+    if (id === 2) return { text: "Grasse Area", color: "text-tertiary", bg: "bg-tertiary/10" };
+    if (id === 3) return { text: "Coastal Hub", color: "text-secondary", bg: "bg-secondary/10" };
+    return { text: `Station ${id}`, color: "text-primary", bg: "bg-primary/10" };
+  };
+
   return (
-    <section>
-      <h2 className="section-title">Aperçu météo en direct</h2>
-
-      <div className="station-grid">
-        {[1, 2, 3].map(id => (
-          <StationCard
-            key={id}
-            siteId={id}
-            siteName={SITE_NAMES[id]}
-            data={latest[id] ?? null}
-          />
-        ))}
-      </div>
-
-      {chart6h && (
-        <div className="chart-box">
-          <div className="chart-header">
-            <h3>Température – 6 dernières heures</h3>
+    <>
+      <section className="relative overflow-hidden rounded-xl bg-surface-container-low bg-gradient-to-br from-primary/15 to-transparent p-4 md:p-10 border-l-4 border-primary">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8">
+          <div>
+            <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-[10px] md:text-xs mb-2">
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
+              En Direct
+            </div>
+            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{SITE_NAMES[mainId]}</h3>
+            <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
+              Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
+            </p>
           </div>
-          <div className="chart-container">
-            <WeatherChart
-              labels={chart6h.labels}
-              datasets={chart6h.datasets}
+          <div className="flex items-center gap-4 md:gap-8 justify-between md:justify-end mt-4 md:mt-0 w-full md:w-auto">
+            <div className="text-left md:text-right flex-1">
+              <div className="text-5xl md:text-8xl font-black font-headline tracking-tighter text-primary data-glow">
+                {fmt(sMain.temperature, 0)}<span className="text-xl md:text-4xl align-top">°C</span>
+              </div>
+              <p className="text-on-surface-variant font-bold uppercase text-[10px] md:text-xs mt-1 md:mt-2 tracking-widest">
+                Batterie: {sMain.battery_pct ?? '--'}%
+              </p>
+            </div>
+            <div className="relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center shrink-0">
+              <div className="absolute inset-0 bg-primary/20 blur-2xl md:blur-3xl rounded-full"></div>
+              <span className="material-symbols-outlined text-7xl md:text-8xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
+                wb_sunny
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
+          <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="humidity_percentage" iconColor="text-secondary" />
+          <StatBox label="Pression" value={fmt(sMain.pressure, 0)} unit="hPa" icon="compress" iconColor="text-primary" />
+          <StatBox label="Luminosité" value={sMain.lux != null ? sMain.lux : '–'} unit="lx" icon="light_mode" iconColor="text-tertiary" />
+          <StatBox label="Vitesse Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {otherIds.map(id => {
+          const tagInfo = getSiteTag(id);
+          return (
+            <SecondaryCard 
+              key={id} 
+              siteName={SITE_NAMES[id]} 
+              data={latest[id] || {}} 
+              tag={tagInfo.text} 
+              tagColor={tagInfo.color} 
+              tagBg={tagInfo.bg} 
+              onClick={() => setMainStationId(id)}
+            />
+          );
+        })}
+      </section>
+
+      {chart24h && (
+        <section className="bg-surface-container-low rounded-xl p-8 border border-outline-variant">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h4 className="text-lg font-headline font-bold tracking-tight">Tendances Récentes</h4>
+              <p className="text-xs text-on-surface-variant">Fluctuations des températures sur les 24 dernières heures</p>
+            </div>
+          </div>
+          <div className="h-64 relative">
+             <WeatherChart
+              labels={chart24h.labels}
+              datasets={chart24h.datasets}
               options={{
+                maintainAspectRatio: false,
                 plugins: {
-                  tooltip: {
-                    callbacks: {
-                      label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`,
-                    },
-                  },
+                  legend: { display: false },
+                  tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
                 },
                 scales: {
                   x: {
+                    grid: { color: 'rgba(255,255,255,0.05)' },
                     ticks: {
                       maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 12,
                       callback: function(val, idx) {
-                        const d = new Date(chart6h.labels[idx]);
+                        const d = new Date(chart24h.labels[idx]);
                         return isNaN(d) ? val : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                       }
                     }
                   },
-                  y: { title: { display: true, text: 'Température (°C)', color: '#94a3b8' } },
+                  y: { title: { display: true, text: '°C' } },
                 },
               }}
             />
           </div>
-        </div>
+        </section>
       )}
-    </section>
+    </>
+  );
+}
+
+function StatBox({ label, value, unit, icon, iconColor }) {
+  return (
+    <div className="bg-surface-container-highest/50 backdrop-blur-md p-4 md:p-6 rounded-xl border border-outline-variant">
+      <p className="text-on-surface-variant text-[9px] md:text-[10px] font-bold uppercase tracking-widest mb-2 md:mb-4">{label}</p>
+      <div className="flex items-end justify-between">
+        <span className="text-xl md:text-2xl font-headline font-bold">{value}<span className="text-xs md:text-sm font-normal text-on-surface-variant ml-1">{unit}</span></span>
+        <span className={`material-symbols-outlined text-lg md:text-xl ${iconColor}`}>{icon}</span>
+      </div>
+    </div>
+  );
+}
+
+function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
+  return (
+    <div 
+      onClick={onClick}
+      className="bg-surface-container-high rounded-xl p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer"
+    >
+      <div className="flex justify-between items-start mb-10">
+        <div>
+          <span className={`inline-block px-3 py-1 ${tagBg} ${tagColor} text-[10px] font-bold rounded-full mb-4 uppercase tracking-tighter`}>{tag}</span>
+          <h4 className="text-3xl font-black font-headline tracking-tighter">{siteName}</h4>
+        </div>
+        <div className="text-right">
+          <div className="text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
+          <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">
+            Batterie: {data.battery_pct ?? '--'}%
+          </p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between">
+          <span className="material-symbols-outlined text-on-surface-variant">water_drop</span>
+          <div className="text-right">
+            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Humidité</p>
+            <p className="font-headline font-bold">{fmt(data.humidity, 0)}%</p>
+          </div>
+        </div>
+        <div className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between">
+          <span className="material-symbols-outlined text-on-surface-variant">air</span>
+          <div className="text-right">
+            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Vent</p>
+            <p className="font-headline font-bold">{fmt(data.wind_speed, 1)} km/h</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
 export function buildCompareDatasets(rows, field) {
-  const hourSet = [...new Set(rows.map(r => r.hour))].sort();
+  const hourSet = [...new Set(rows.map(r => r.hour_start || r.hour))].sort();
   const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
     const siteRows = rows.filter(r => String(r.site_id) === id);
-    const byHour = Object.fromEntries(siteRows.map(r => [r.hour, r[field]]));
+    const byHour = Object.fromEntries(siteRows.map(r => [r.hour_start || r.hour, r[field]]));
     return {
       label: name,
       data: hourSet.map(h => byHour[h] ?? null),
       borderColor: SITE_COLORS[id],
       backgroundColor: SITE_COLORS[id] + '22',
-      fill: false,
+      fill: true,
       tension: 0.3,
       pointRadius: 2,
       spanGaps: true,
