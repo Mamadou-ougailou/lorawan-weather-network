@@ -8,7 +8,7 @@ Type=simple
 User=weather
 Group=weather
 WorkingDirectory=/opt/weather
-ExecStart=/opt/weather/venv/bin/python3 /opt/weather/datacenter/mqtt_subscriber.py \
+ExecStart=/opt/weather/venv/bin/python3 /opt/weather/datacenter/main.py \
     --config /etc/weather/config.ini
 Restart=always
 RestartSec=10

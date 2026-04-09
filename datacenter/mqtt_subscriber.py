@@ -1,16 +1,3 @@
-#!/usr/bin/env python3
-"""
-mqtt_subscriber.py – Raspberry Pi data-center subscriber
-
-Subscribes to the university MQTT broker (which receives forwarded TTN messages)
-and stores incoming weather measurements into the MariaDB database.
-
-Usage:
-    python3 mqtt_subscriber.py [--config /etc/weather/config.ini]
-
-Systemd unit: see ../scripts/weather-subscriber.service
-"""
-
 import argparse
 import configparser
 import json
@@ -32,7 +19,7 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
         logging.StreamHandler(sys.stdout),
-        logging.FileHandler("/var/log/weather/mqtt_subscriber.log"),
+        logging.FileHandler("mqtt_subscriber.log"),
     ],
 )
 log = logging.getLogger("weather.subscriber")
@@ -57,7 +44,7 @@ DEFAULT_CONFIG = {
         "database": "weather_network",
     },
     "storage": {
-        "image_dir": "/var/weather/images",
+        "image_dir": "images",
     },
 }
 
@@ -95,11 +82,11 @@ class Database:
         sql = """
             INSERT INTO measurements
                 (site_id, received_at, temperature, humidity, pressure, lux,
-                 battery_pct, bme280_ok, tsl2591_ok, camera_ok,
+                 wind_speed, rain_quantity, battery_pct, bme280_ok, tsl2591_ok, camera_ok,
                  dev_eui, f_cnt, rssi, snr, raw_payload)
             VALUES
                 (%(site_id)s, %(received_at)s, %(temperature)s, %(humidity)s,
-                 %(pressure)s, %(lux)s, %(battery_pct)s, %(bme280_ok)s,
+                 %(pressure)s, %(lux)s, %(wind_speed)s, %(rain_quantity)s, %(battery_pct)s, %(bme280_ok)s,
                  %(tsl2591_ok)s, %(camera_ok)s, %(dev_eui)s, %(f_cnt)s,
                  %(rssi)s, %(snr)s, %(raw_payload)s)
         """
@@ -174,9 +161,10 @@ class WeatherSubscriber:
 
         self.db.insert_measurement(data)
         log.info(
-            "Stored: site=%s T=%.2f°C H=%.2f%% P=%.2f hPa Lux=%s Bat=%s%%",
+            "Stored: site=%s T=%.2f°C H=%.2f%% P=%.2f hPa Lux=%s W=%.2f R=%.2f Bat=%s%%",
             data["site_id"], data["temperature"] or 0, data["humidity"] or 0,
-            data["pressure"] or 0, data["lux"], data["battery_pct"],
+            data["pressure"] or 0, data["lux"], data.get("wind_speed") or 0, 
+            data.get("rain_quantity") or 0, data["battery_pct"],
         )
 
     # ── TTN native uplink format ──────────────────────────────────────────────
@@ -185,7 +173,8 @@ class WeatherSubscriber:
             up     = payload["uplink_message"]
             dec    = up.get("decoded_payload", {})
             md     = up.get("rx_metadata", [{}])[0]
-            dev_id = payload.get("end_device_ids", {}).get("dev_eui", "")
+            dev_id = payload.get("end_device_ids", {}).get("device_id", "")
+            dev_eui = payload.get("end_device_ids", {}).get("dev_eui", "")
             f_cnt  = up.get("f_cnt", None)
             rssi   = md.get("rssi", None)
             snr    = md.get("snr", None)
@@ -194,18 +183,30 @@ class WeatherSubscriber:
             received_at = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
 
             sensors = dec.get("sensors", {})
+            
+            site_id = dec.get("site_id")
+            if not site_id:
+                if "valrose" in dev_id or "nice" in dev_id:
+                    site_id = 3
+                elif "grasse" in dev_id:
+                    site_id = 2
+                else:
+                    site_id = 1
+
             return {
-                "site_id":     dec.get("site_id"),
+                "site_id":     site_id,
                 "received_at": received_at,
                 "temperature": dec.get("temperature"),
                 "humidity":    dec.get("humidity"),
                 "pressure":    dec.get("pressure"),
                 "lux":         dec.get("lux"),
+                "wind_speed":  dec.get("wind_speed"),
+                "rain_quantity": dec.get("rain_speed"),
                 "battery_pct": dec.get("battery"),
                 "bme280_ok":   1 if sensors.get("bme280") else 0,
                 "tsl2591_ok":  1 if sensors.get("tsl2591") else 0,
                 "camera_ok":   1 if sensors.get("camera") else 0,
-                "dev_eui":     dev_id,
+                "dev_eui":     dev_eui,
                 "f_cnt":       f_cnt,
                 "rssi":        rssi,
                 "snr":         snr,
@@ -231,6 +232,8 @@ class WeatherSubscriber:
                 "humidity":    payload.get("humidity"),
                 "pressure":    payload.get("pressure"),
                 "lux":         payload.get("lux"),
+                "wind_speed":  payload.get("wind_speed"),
+                "rain_quantity": payload.get("rain_quantity", payload.get("rain_speed")),
                 "battery_pct": payload.get("battery"),
                 "bme280_ok":   1 if payload.get("bme280_ok") else 0,
                 "tsl2591_ok":  1 if payload.get("tsl2591_ok") else 0,
@@ -271,8 +274,8 @@ class WeatherSubscriber:
 def main():
     parser = argparse.ArgumentParser(description="Weather MQTT subscriber / DB writer")
     parser.add_argument(
-        "--config", default="/etc/weather/config.ini",
-        help="Path to configuration file (default: /etc/weather/config.ini)"
+        "--config", default="config.ini",
+        help="Path to configuration file (default: config.ini)"
     )
     args = parser.parse_args()
 
@@ -287,8 +290,7 @@ def main():
     else:
         log.warning("Config file %s not found, using defaults", args.config)
 
-    # Ensure log directory exists
-    os.makedirs("/var/log/weather", exist_ok=True)
+    # Ensure storage directories exist locally
     os.makedirs(cfg["storage"]["image_dir"], exist_ok=True)
 
     subscriber = WeatherSubscriber(cfg)
