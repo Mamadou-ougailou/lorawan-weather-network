@@ -1,0 +1,74 @@
+# docker-compose.yml – Raspberry Pi Server Stack
+# Lance les 3 composants principaux du serveur : Base de données, Datacenter (mqtt-subscriber) et API Web
+
+services:
+  mariadb:
+    image: mariadb:11
+    container_name: weather-db
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MARIADB_ROOT_PASSWORD: rootdev
+      MARIADB_DATABASE: weather_network
+      MARIADB_USER: weather
+      MARIADB_PASSWORD: weatherdev
+    volumes:
+      # Chemin mis à jour vers le sous-dossier mqtt-subscriber
+      - ./mqtt-subscriber/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - weather_pi_db:/var/lib/mysql
+    networks:
+      - weather_net
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Datacenter (MQTT Subscriber) ─────────────────────────────────────────
+  subscriber:
+    build: ./mqtt-subscriber
+    container_name: weather-subscriber
+    restart: unless-stopped
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    volumes:
+      # Chemin mis à jour vers le config.ini dans mqtt-subscriber
+      - ./mqtt-subscriber/config.ini:/app/config.ini:ro
+    networks:
+      - weather_net
+    environment:
+      WEATHER_DB_HOST: mariadb
+      WEATHER_DB_PORT: 3306
+      WEATHER_DB_USER: weather
+      WEATHER_DB_PASSWORD: weatherdev
+      WEATHER_DB_NAME: weather_network
+
+  # ─── Node.js REST API ─────────────────────────────────────────────────────
+  api:
+    build: ./api
+    container_name: weather-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    networks:
+      - weather_net
+    environment:
+      PORT: 3000
+      DB_HOST: mariadb
+      DB_PORT: 3306
+      DB_USER: weather
+      DB_PASSWORD: weatherdev
+      DB_NAME: weather_network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+volumes:
+  weather_pi_db:
+  
+
+networks:
+  weather_net:
+    name: weather_net
