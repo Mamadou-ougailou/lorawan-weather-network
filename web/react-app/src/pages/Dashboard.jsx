@@ -18,14 +18,28 @@ export default function Dashboard({ refreshSignal }) {
     }
 
     try {
-      const data = await apiFetch(ROUTES.compare(24));
-      setChart24h(buildCompareDatasets(data, 'temp_avg'));
-    } catch (e) {
-      console.warn('Could not load 6h chart:', e.message);
+      // /api/trend lit directement measurements — données en temps réel, buckets de 30 min
+      const data = await apiFetch(ROUTES.trend(6, 30));
+      setChart24h(buildTrendDatasets(data, 'temp_avg'));
+    } catch {
+      // Fallback sur /api/compare si /api/trend n'est pas encore disponible sur le serveur
+      try {
+        const data = await apiFetch(ROUTES.compare(24));
+        setChart24h(buildCompareDatasets(data, 'temp_avg'));
+      } catch (e) {
+        console.warn('Could not load chart:', e.message);
+        setChart24h({ labels: [], datasets: [] }); // affiche un graphique vide plutôt que rien
+      }
     }
   }, []);
 
-  useEffect(() => { load(); }, [load, refreshSignal]);
+  // Charge au montage + à chaque refreshSignal + polling toutes les 60s
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => clearInterval(timer);
+  }, [load, refreshSignal]);
+
 
   const mainId = mainStationId;
   const otherIds = [1, 2, 3].filter(id => id !== mainId);
@@ -196,6 +210,25 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
   );
 }
 
+export function buildTrendDatasets(rows, field) {
+  const hourSet = [...new Set(rows.map(r => r.bucket))].sort();
+  const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
+    const siteRows = rows.filter(r => String(r.site_id) === id);
+    const byHour = Object.fromEntries(siteRows.map(r => [r.bucket, r[field]]));
+    return {
+      label: name,
+      data: hourSet.map(h => byHour[h] ?? null),
+      borderColor: SITE_COLORS[id],
+      backgroundColor: SITE_COLORS[id] + '22',
+      fill: true,
+      tension: 0.3,
+      pointRadius: 2,
+      spanGaps: true,
+    };
+  });
+  return { labels: hourSet, datasets };
+}
+
 export function buildCompareDatasets(rows, field) {
   const hourSet = [...new Set(rows.map(r => r.hour_start || r.hour))].sort();
   const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
@@ -214,3 +247,4 @@ export function buildCompareDatasets(rows, field) {
   });
   return { labels: hourSet, datasets };
 }
+

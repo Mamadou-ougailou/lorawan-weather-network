@@ -67,7 +67,6 @@ services:
 
 volumes:
   weather_pi_db:
-  
 
 networks:
   weather_net:

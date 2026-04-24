@@ -3,9 +3,9 @@ import { apiFetch, ROUTES } from '../api';
 import WeatherChart from '../components/WeatherChart';
 
 const SITE_OPTIONS = [
-  { value: '1', label: 'Mougins' },
-  { value: '2', label: 'Grasse' },
-  { value: '3', label: 'Nice' },
+  { value: '1', label: 'Nice' },
+  { value: '2', label: 'Mougins' },
+  { value: '3', label: 'Grasse' },
 ];
 
 const PERIOD_OPTIONS = [
