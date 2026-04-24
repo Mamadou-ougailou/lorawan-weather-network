@@ -28,7 +28,7 @@ import imagesRouter from "./routes/images.js";
 // ─── Middleware ───────────────────────────────────────────────────────────────
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
-// ─── App setup ────────────────────────────────────────────────────────────────
+// ─── App setup ───────────────────────────────────────────────160eecb7094d─────────────────
 const app = express();
 
 // Allow cross-origin requests from any origin.
@@ -36,6 +36,12 @@ const app = express();
 // "Access-Control-Allow-Origin: *" — including when the frontend is opened
 // directly from the filesystem (file:// sends Origin: null, which the default
 // cors() reflects as-is, and browsers then block it).
+app.use((req, res, next) => {
+    if (req.headers['access-control-request-private-network']) {
+        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    }
+    next();
+});
 app.use(cors({ origin: "*" }));
 
 // Parse incoming JSON bodies (useful if POST endpoints are added later)
