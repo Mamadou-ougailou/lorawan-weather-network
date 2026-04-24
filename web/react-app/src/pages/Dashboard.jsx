@@ -50,14 +50,14 @@ export default function Dashboard({ refreshSignal }) {
   const sMain = latest[mainId] || {};
   const currentStation = stations.find(s => s.id === mainId);
 
-  const getSiteTag = (id) => {
+  const getSiteTag = (st) => {
     // Juste un effet de couleur semi-aléatoire basé sur l'ID pour les tags
     const colors = [
       { color: "text-primary", bg: "bg-primary/10" },
       { color: "text-tertiary", bg: "bg-tertiary/10" },
       { color: "text-secondary", bg: "bg-secondary/10" }
     ];
-    return { text: "Réseau Local", ...colors[id % colors.length] };
+    return { text: st ? st.name : "Réseau Local", ...colors[(st?.id || 0) % colors.length] };
   };
 
   return (
@@ -69,7 +69,7 @@ export default function Dashboard({ refreshSignal }) {
               <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
               En Direct
             </div>
-            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.name || 'Inconnu'}</h3>
+            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
               Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
             </p>
@@ -104,12 +104,12 @@ export default function Dashboard({ refreshSignal }) {
 
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {otherIds.map(id => {
-          const tagInfo = getSiteTag(id);
           const st = stations.find(s => s.id === id);
+          const tagInfo = getSiteTag(st);
           return (
             <SecondaryCard
               key={id}
-              siteName={st ? st.name : `Station ${id}`}
+              siteName={st && st.city ? st.city : `Station ${id}`}
               data={latest[id] || {}}
               tag={tagInfo.text}
               tagColor={tagInfo.color}
