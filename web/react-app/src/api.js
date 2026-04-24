@@ -3,33 +3,35 @@
  */
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-export const API_BASE = "http://localhost:3000/";
+export const API_BASE = "http://100.107.230.37:3000/";
 export const REFRESH_INTERVAL_MS = 60_000;
 
 export const ROUTES = {
   latest: "/api/latest",
   compare: (hours) => `/api/compare?hours=${hours}`,
+  trend:   (hours, interval = 30) => `/api/trend?hours=${hours}&interval=${interval}`,
   history: (site, hours) => `/api/history?site=${site}&hours=${hours}`,
   images: (site, limit = 12) =>
     site ? `/api/images?site=${site}&limit=${limit}` : `/api/images?limit=${limit}`,
   measurements: (site, limit = 1) => `/api/measurements?site=${site}&limit=${limit}`,
 };
 
+
 const API_ORIGIN = new URL(API_BASE).origin;
 
 // ─── Couleurs / noms / coordonnées des sites ──────────────────────────────────
 export const SITE_COLORS = {
-  1: "#f97316",  // Mougins
-  2: "#a78bfa",  // Grasse
-  3: "#34d399",  // Nice
+  1: "#34d399",  // Nice
+  2: "#f97316",  // Mougins
+  3: "#a78bfa",  // Grasse
 };
 
-export const SITE_NAMES = { 1: "Mougins", 2: "Grasse", 3: "Nice" };
+export const SITE_NAMES = { 1: "Nice", 2: "Mougins", 3: "Grasse" };
 
 export const SITE_COORDS = {
-  1: [43.600000, 7.005000],
-  2: [43.658333, 6.925000],
-  3: [43.710173, 7.261953],
+  1: [43.710173, 7.261953],  // Nice
+  2: [43.600000, 7.005000],  // Mougins
+  3: [43.658333, 6.925000],  // Grasse
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
