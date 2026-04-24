@@ -8,10 +8,12 @@ import History   from './pages/History';
 import SkyImages from './pages/SkyImages';
 import Map       from './pages/Map';
 import { REFRESH_INTERVAL_MS } from './api';
+import { useStations } from './StationsContext';
 
 const SECTIONS = ['dashboard', 'compare', 'history', 'sky', 'map'];
 
 export default function App() {
+  const stations = useStations();
   const [activeSection, setActiveSection] = useState('dashboard');
   const [lastUpdate,    setLastUpdate]    = useState('');
   const [refreshSignal, setRefreshSignal] = useState(0);
@@ -39,6 +41,10 @@ export default function App() {
     const id = setInterval(handleRefresh, REFRESH_INTERVAL_MS);
     return () => clearInterval(id);
   }, [handleRefresh]);
+
+  if (stations.length === 0) {
+    return <div className="flex items-center justify-center h-screen w-screen bg-surface text-on-surface text-xl font-bold">Connexion au réseau de stations...</div>;
+  }
 
   return (
     <>

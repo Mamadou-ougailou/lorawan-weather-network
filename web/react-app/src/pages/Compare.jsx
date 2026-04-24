@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, ROUTES, SITE_NAMES, SITE_COLORS, fmt } from '../api';
+import { apiFetch, ROUTES, fmt } from '../api';
+import { useStations } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 import { buildCompareDatasets } from './Dashboard';
 
@@ -20,6 +21,7 @@ const VAR_OPTIONS = [
 ];
 
 export default function Compare() {
+  const stations = useStations();
   const [hours,  setHours]  = useState('24');
   const [varKey, setVarKey] = useState('temp_avg');
   const [chart,  setChart]  = useState(null);
@@ -28,7 +30,7 @@ export default function Compare() {
     let cancelled = false;
     apiFetch(ROUTES.compare(hours))
       .then(data => {
-        if (!cancelled) setChart(buildCompareDatasets(data, varKey));
+        if (!cancelled) setChart(buildCompareDatasets(data, varKey, stations));
       })
       .catch(e => console.warn('Compare load failed:', e.message));
     return () => { cancelled = true; };

@@ -1,11 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, ROUTES, SITE_COLORS, SITE_NAMES, fmt } from '../api';
+import { apiFetch, ROUTES, fmt } from '../api';
+import { useStations } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 
 export default function Dashboard({ refreshSignal }) {
+  const stations = useStations();
   const [latest, setLatest] = useState({});
   const [chart24h, setChart24h] = useState(null);
-  const [mainStationId, setMainStationId] = useState(1);
+  
+  // Défaut au premier ID de station si non défini
+  const [mainStationId, setMainStationId] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -20,12 +24,12 @@ export default function Dashboard({ refreshSignal }) {
     try {
       // /api/trend lit directement measurements — données en temps réel, buckets de 30 min
       const data = await apiFetch(ROUTES.trend(6, 30));
-      setChart24h(buildTrendDatasets(data, 'temp_avg'));
+      setChart24h(buildTrendDatasets(data, 'temp_avg', stations));
     } catch {
       // Fallback sur /api/compare si /api/trend n'est pas encore disponible sur le serveur
       try {
         const data = await apiFetch(ROUTES.compare(24));
-        setChart24h(buildCompareDatasets(data, 'temp_avg'));
+        setChart24h(buildCompareDatasets(data, 'temp_avg', stations));
       } catch (e) {
         console.warn('Could not load chart:', e.message);
         setChart24h({ labels: [], datasets: [] }); // affiche un graphique vide plutôt que rien
@@ -41,15 +45,19 @@ export default function Dashboard({ refreshSignal }) {
   }, [load, refreshSignal]);
 
 
-  const mainId = mainStationId;
-  const otherIds = [1, 2, 3].filter(id => id !== mainId);
+  const mainId = mainStationId || (stations[0]?.id ?? 1);
+  const otherIds = stations.map(s => s.id).filter(id => id !== mainId);
   const sMain = latest[mainId] || {};
+  const currentStation = stations.find(s => s.id === mainId);
 
   const getSiteTag = (id) => {
-    if (id === 1) return { text: "Mougins Center", color: "text-primary", bg: "bg-primary/10" };
-    if (id === 2) return { text: "Grasse Area", color: "text-tertiary", bg: "bg-tertiary/10" };
-    if (id === 3) return { text: "Coastal Hub", color: "text-secondary", bg: "bg-secondary/10" };
-    return { text: `Station ${id}`, color: "text-primary", bg: "bg-primary/10" };
+    // Juste un effet de couleur semi-aléatoire basé sur l'ID pour les tags
+    const colors = [
+      { color: "text-primary", bg: "bg-primary/10" },
+      { color: "text-tertiary", bg: "bg-tertiary/10" },
+      { color: "text-secondary", bg: "bg-secondary/10" }
+    ];
+    return { text: "Réseau Local", ...colors[id % colors.length] };
   };
 
   return (
@@ -61,7 +69,7 @@ export default function Dashboard({ refreshSignal }) {
               <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
               En Direct
             </div>
-            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{SITE_NAMES[mainId]}</h3>
+            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
               Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
             </p>
@@ -97,10 +105,11 @@ export default function Dashboard({ refreshSignal }) {
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {otherIds.map(id => {
           const tagInfo = getSiteTag(id);
+          const st = stations.find(s => s.id === id);
           return (
             <SecondaryCard
               key={id}
-              siteName={SITE_NAMES[id]}
+              siteName={st ? st.name : `Station ${id}`}
               data={latest[id] || {}}
               tag={tagInfo.text}
               tagColor={tagInfo.color}
@@ -212,16 +221,16 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
   );
 }
 
-export function buildTrendDatasets(rows, field) {
+export function buildTrendDatasets(rows, field, stations) {
   const hourSet = [...new Set(rows.map(r => r.bucket))].sort();
-  const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
-    const siteRows = rows.filter(r => String(r.site_id) === id);
+  const datasets = stations.map(station => {
+    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
     const byHour = Object.fromEntries(siteRows.map(r => [r.bucket, r[field]]));
     return {
-      label: name,
+      label: station.name,
       data: hourSet.map(h => byHour[h] ?? null),
-      borderColor: SITE_COLORS[id],
-      backgroundColor: SITE_COLORS[id] + '22',
+      borderColor: station.color,
+      backgroundColor: station.color + '22',
       fill: true,
       tension: 0.3,
       pointRadius: 2,
@@ -231,16 +240,16 @@ export function buildTrendDatasets(rows, field) {
   return { labels: hourSet, datasets };
 }
 
-export function buildCompareDatasets(rows, field) {
+export function buildCompareDatasets(rows, field, stations) {
   const hourSet = [...new Set(rows.map(r => r.hour_start || r.hour))].sort();
-  const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
-    const siteRows = rows.filter(r => String(r.site_id) === id);
+  const datasets = stations.map(station => {
+    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
     const byHour = Object.fromEntries(siteRows.map(r => [r.hour_start || r.hour, r[field]]));
     return {
-      label: name,
+      label: station.name,
       data: hourSet.map(h => byHour[h] ?? null),
-      borderColor: SITE_COLORS[id],
-      backgroundColor: SITE_COLORS[id] + '22',
+      borderColor: station.color,
+      backgroundColor: station.color + '22',
       fill: true,
       tension: 0.3,
       pointRadius: 2,

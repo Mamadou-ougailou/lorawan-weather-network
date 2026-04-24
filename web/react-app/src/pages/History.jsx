@@ -1,12 +1,7 @@
 import { useState } from 'react';
 import { apiFetch, ROUTES } from '../api';
+import { useStations } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
-
-const SITE_OPTIONS = [
-  { value: '1', label: 'Nice' },
-  { value: '2', label: 'Mougins' },
-  { value: '3', label: 'Grasse' },
-];
 
 const PERIOD_OPTIONS = [
   { value: '24',  label: 'Dernières 24h' },
@@ -16,7 +11,8 @@ const PERIOD_OPTIONS = [
 ];
 
 export default function History() {
-  const [site,  setSite]  = useState('1');
+  const stations = useStations();
+  const [site,  setSite]  = useState(stations.length > 0 ? String(stations[0].id) : '');
   const [hours, setHours] = useState('24');
   const [charts, setCharts] = useState(null);
 
@@ -40,7 +36,7 @@ export default function History() {
         <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[150px] max-w-xs">
           Station :
           <select value={site} onChange={e => setSite(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
-            {SITE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {stations.map(st => <option key={st.id} value={st.id}>{st.name}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[200px] max-w-xs">
