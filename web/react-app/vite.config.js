@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/lorawan-weather-network/', // Requis pour GitHub Pages
   plugins: [react()],
   server: {
     host: '0.0.0.0', // Allow connections from outside the container
