@@ -84,11 +84,13 @@ export default function Dashboard({ refreshSignal }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
-          <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="humidity_percentage" iconColor="text-secondary" />
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
+          <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="water_drop" iconColor="text-secondary" />
           <StatBox label="Pression" value={fmt(sMain.pressure, 0)} unit="hPa" icon="compress" iconColor="text-primary" />
           <StatBox label="Luminosité" value={sMain.lux != null ? sMain.lux : '–'} unit="lx" icon="light_mode" iconColor="text-tertiary" />
-          <StatBox label="Vitesse Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />
+          <StatBox label="Vit. Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />
+          <StatBox label="Dir. Vent" value={fmt(sMain.wind_direction, 0)} unit="°" icon="explore" iconColor="text-primary" />
+          <StatBox label="Pluie" value={fmt(sMain.rain_quantity, 1)} unit="mm" icon="rainy" iconColor="text-tertiary" />
         </div>
       </section>
 
