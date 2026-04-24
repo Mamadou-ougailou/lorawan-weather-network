@@ -79,9 +79,6 @@ export default function Dashboard({ refreshSignal }) {
               <div className="text-5xl md:text-8xl font-black font-headline tracking-tighter text-primary data-glow">
                 {fmt(sMain.temperature, 0)}<span className="text-xl md:text-4xl align-top">°C</span>
               </div>
-              <p className="text-on-surface-variant font-bold uppercase text-[10px] md:text-xs mt-1 md:mt-2 tracking-widest">
-                Batterie: {sMain.battery_pct ?? '--'}%
-              </p>
             </div>
             <div className="relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center shrink-0">
               <div className="absolute inset-0 bg-primary/20 blur-2xl md:blur-3xl rounded-full"></div>
@@ -196,9 +193,6 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
         </div>
         <div className="text-right">
           <div className="text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
-          <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">
-            Batterie: {data.battery_pct ?? '--'}%
-          </p>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
