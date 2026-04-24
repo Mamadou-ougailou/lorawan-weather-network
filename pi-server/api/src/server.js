@@ -31,18 +31,27 @@ import { notFound, errorHandler } from "./middleware/errorHandler.js";
 // ─── App setup ───────────────────────────────────────────────160eecb7094d─────────────────
 const app = express();
 
-// Allow cross-origin requests from any origin.
-// Using { origin: '*' } explicitly ensures the response header is always
-// "Access-Control-Allow-Origin: *" — including when the frontend is opened
-// directly from the filesystem (file:// sends Origin: null, which the default
-// cors() reflects as-is, and browsers then block it).
+// ─── CORS + Private Network Access (Chrome PNA) ──────────────────────────────
+//
+// Chrome blocks requests from public origins (e.g. github.io) to private
+// network addresses (e.g. Tailscale *.ts.net) unless the server explicitly
+// responds with Access-Control-Allow-Private-Network: true on the preflight.
+//
+// We handle both in a single middleware BEFORE cors() so that OPTIONS preflight
+// responses always carry the PNA header (cors() would short-circuit otherwise).
 app.use((req, res, next) => {
-    if (req.headers['access-control-request-private-network']) {
-        res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+
+    // Respond immediately to preflight requests
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(204);
     }
     next();
 });
-app.use(cors({ origin: "*" }));
+app.use(cors({ origin: '*' }));
 
 // Parse incoming JSON bodies (useful if POST endpoints are added later)
 app.use(express.json());
