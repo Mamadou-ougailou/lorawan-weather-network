@@ -64,6 +64,16 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
+  # ─── Tunnel Gratuit Cloudflare (Sans compte) ────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: weather-tunnel
+    command: tunnel --url http://weather-api:3000
+    restart: unless-stopped
+    networks:
+      - weather_net
+    depends_on:
+      - api
 
 volumes:
   weather_pi_db:
@@ -71,3 +81,4 @@ volumes:
 networks:
   weather_net:
     name: weather_net
+
