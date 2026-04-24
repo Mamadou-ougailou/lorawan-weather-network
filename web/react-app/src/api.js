@@ -3,7 +3,8 @@
  */
 
 // ─── Configuration ────────────────────────────────────────────────────────────
-export const API_BASE = "http://100.107.230.37:3000/";
+
+export const API_BASE = import.meta.env.VITE_API_URL || "http://100.107.230.37:3000/";
 export const REFRESH_INTERVAL_MS = 60_000;
 
 export const ROUTES = {
