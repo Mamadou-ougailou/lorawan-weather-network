@@ -62,21 +62,29 @@ export default function Compare() {
               options={{
                 plugins: {
                   tooltip: {
-                    callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` },
+                    callbacks: { 
+                      title: ctx => {
+                        const d = new Date(ctx[0].label);
+                        return isNaN(d) ? ctx[0].label : d.toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+                      },
+                      label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` 
+                    },
                   },
                 },
                 scales: {
                   x: {
+                    offset: true,
                     ticks: {
-                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 12,
+                      maxRotation: 0,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
                       callback(val, idx) {
                         const d = new Date(chart.labels[idx]);
-                        return isNaN(d) ? val
-                          : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        if (isNaN(d)) return val;
+                        return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
                       },
                     },
                   },
-                  y: { title: { display: true, text: varLabel } },
+                  y: { title: { display: true, text: varLabel }, grace: '5%' },
                 },
               }}
             />

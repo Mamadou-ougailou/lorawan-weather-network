@@ -111,20 +111,31 @@ export default function Dashboard({ refreshSignal }) {
                 maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
-                  tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } },
+                  tooltip: { 
+                    callbacks: { 
+                      title: ctx => {
+                        const d = new Date(ctx[0].label);
+                        return isNaN(d) ? ctx[0].label : d.toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+                      },
+                      label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` 
+                    } 
+                  },
                 },
                 scales: {
                   x: {
+                    offset: true,
                     grid: { color: 'rgba(255,255,255,0.05)' },
                     ticks: {
-                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 6 : 12,
+                      maxRotation: 0,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
                       callback: function(val, idx) {
                         const d = new Date(chart24h.labels[idx]);
-                        return isNaN(d) ? val : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        if (isNaN(d)) return val;
+                        return `${d.getHours()}h`;
                       }
                     }
                   },
-                  y: { title: { display: true, text: '°C' } },
+                  y: { title: { display: true, text: '°C' }, grace: '5%' },
                 },
               }}
             />

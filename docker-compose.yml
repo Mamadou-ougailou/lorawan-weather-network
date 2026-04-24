@@ -10,7 +10,7 @@ services:
     container_name: weather-dev-db
     restart: unless-stopped
     ports:
-      - "3306:3306"
+      - "3307:3306"
     environment:
       MARIADB_ROOT_PASSWORD: rootdev
       MARIADB_DATABASE: weather_network

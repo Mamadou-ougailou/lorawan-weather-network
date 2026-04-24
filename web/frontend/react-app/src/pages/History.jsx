@@ -23,11 +23,10 @@ export default function History() {
   async function handleLoad() {
     try {
       const data = await apiFetch(ROUTES.history(site, hours));
-      const labels = data.map(r =>
-        typeof window !== 'undefined' && window.innerWidth < 640
-          ? new Date(r.hour_start).toLocaleString([], { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : new Date(r.hour_start).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-      );
+      const labels = data.map(r => {
+        const d = new Date(r.hour_start);
+        return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
+      });
       setCharts({ labels, rows: data });
     } catch (e) {
       console.warn('History load failed:', e.message);
@@ -74,17 +73,19 @@ export default function History() {
                 ]}
                 options={{
                   scales: {
-                    x: { ticks: { maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
+                    x: { offset: true, ticks: { maxRotation: 0, maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
                     yT: {
                       position: 'left',
                       title: { display: true, text: '°C', color: '#f97316' },
                       ticks: { color: '#f97316' },
+                      grace: '5%'
                     },
                     yH: {
                       position: 'right',
                       title: { display: true, text: '%', color: '#38bdf8' },
                       ticks: { color: '#38bdf8' },
                       grid: { drawOnChartArea: false },
+                      grace: '5%'
                     },
                   },
                 }}
@@ -103,8 +104,8 @@ export default function History() {
                 }]}
                 options={{
                   scales: {
-                    x: { ticks: { maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
-                    y: { title: { display: true, text: 'hPa' } },
+                    x: { offset: true, ticks: { maxRotation: 0, maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
+                    y: { title: { display: true, text: 'hPa' }, grace: '5%' },
                   },
                 }}
               />
@@ -129,17 +130,19 @@ export default function History() {
                 ]}
                 options={{
                   scales: {
-                    x: { ticks: { maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
+                    x: { offset: true, ticks: { maxRotation: 0, maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10 } },
                     yWind: { 
                       position: 'left',
                       title: { display: true, text: 'km/h', color: '#fde047' },
-                      ticks: { color: '#fde047' }
+                      ticks: { color: '#fde047' },
+                      grace: '5%'
                     },
                     yRain: {
                       position: 'right',
                       title: { display: true, text: 'mm/min', color: '#60a5fa' },
                       ticks: { color: '#60a5fa' },
-                      grid: { drawOnChartArea: false }
+                      grid: { drawOnChartArea: false },
+                      grace: '5%'
                     },
                   },
                 }}
