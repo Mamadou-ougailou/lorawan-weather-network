@@ -96,13 +96,13 @@ export default function Dashboard({ refreshSignal }) {
         {otherIds.map(id => {
           const tagInfo = getSiteTag(id);
           return (
-            <SecondaryCard 
-              key={id} 
-              siteName={SITE_NAMES[id]} 
-              data={latest[id] || {}} 
-              tag={tagInfo.text} 
-              tagColor={tagInfo.color} 
-              tagBg={tagInfo.bg} 
+            <SecondaryCard
+              key={id}
+              siteName={SITE_NAMES[id]}
+              data={latest[id] || {}}
+              tag={tagInfo.text}
+              tagColor={tagInfo.color}
+              tagBg={tagInfo.bg}
               onClick={() => setMainStationId(id)}
             />
           );
@@ -118,21 +118,21 @@ export default function Dashboard({ refreshSignal }) {
             </div>
           </div>
           <div className="h-64 relative">
-             <WeatherChart
+            <WeatherChart
               labels={chart24h.labels}
               datasets={chart24h.datasets}
               options={{
                 maintainAspectRatio: false,
                 plugins: {
                   legend: { display: false },
-                  tooltip: { 
-                    callbacks: { 
+                  tooltip: {
+                    callbacks: {
                       title: ctx => {
                         const d = new Date(ctx[0].label);
                         return isNaN(d) ? ctx[0].label : d.toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
                       },
-                      label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` 
-                    } 
+                      label: ctx => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}`
+                    }
                   },
                 },
                 scales: {
@@ -142,7 +142,7 @@ export default function Dashboard({ refreshSignal }) {
                     ticks: {
                       maxRotation: 0,
                       maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
-                      callback: function(val, idx) {
+                      callback: function (val, idx) {
                         const d = new Date(chart24h.labels[idx]);
                         if (isNaN(d)) return val;
                         return `${d.getHours()}h`;
@@ -174,7 +174,7 @@ function StatBox({ label, value, unit, icon, iconColor }) {
 
 function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
   return (
-    <div 
+    <div
       onClick={onClick}
       className="bg-surface-container-high rounded-xl p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer"
     >
