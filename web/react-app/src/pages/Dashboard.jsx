@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, ROUTES, SITE_COLORS, SITE_NAMES, fmt } from '../api';
+import { apiFetch, ROUTES, fmt } from '../api';
 import useWeatherSocket from '../hooks/useWeatherSocket';
 import WeatherChart from '../components/WeatherChart';
 
