@@ -135,17 +135,13 @@ export default function History() {
 
   const xAxisTicks = {
     maxRotation: 0,
-    autoSkip: false,
+    autoSkip: true,
+    maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10,
     callback: function(val, idx, ticks) {
-      const limit = typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 10;
-      const step = Math.ceil(ticks.length / limit);
-      const isLast = idx === ticks.length - 1;
-      const isFirst = idx === 0;
-      
-      if (isLast || isFirst || idx % step === 0) {
-        return this.getLabelForValue(val);
-      }
-      return null;
+      if (!charts || !charts.labels) return val;
+      const d = new Date(charts.labels[idx]);
+      if (isNaN(d)) return charts.labels[idx] || val;
+      return `${d.getHours()}h${d.getMinutes() === 30 ? '30' : '00'}`;
     }
   };
   const hasMetric = (key) => charts?.rows?.some(r => r[key] !== null);
@@ -201,8 +197,29 @@ export default function History() {
                   options={{
                     scales: {
                       x: { ticks: xAxisTicks },
-                      yT: { display: hasMetric('temp_avg'), position: 'left', title: { display: true, text: '°C', color: '#f97316' }, ticks: { color: '#f97316' }, grace: '5%' },
-                      yH: { display: hasMetric('humidity_avg'), position: 'right', title: { display: true, text: '%', color: '#38bdf8' }, ticks: { color: '#38bdf8' }, grid: { drawOnChartArea: false }, grace: '5%' },
+                      yT: { 
+                        display: hasMetric('temp_avg'), 
+                        position: 'left', 
+                        title: { 
+                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                          text: '°C', 
+                          color: '#f97316' 
+                        }, 
+                        ticks: { color: '#f97316' }, 
+                        grace: '5%' 
+                      },
+                      yH: { 
+                        display: hasMetric('humidity_avg'), 
+                        position: 'right', 
+                        title: { 
+                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                          text: '%', 
+                          color: '#38bdf8' 
+                        }, 
+                        ticks: { color: '#38bdf8' }, 
+                        grid: { drawOnChartArea: false }, 
+                        grace: '5%' 
+                      },
                     },
                   }}
                 />
@@ -258,20 +275,28 @@ export default function History() {
                     scales: {
                       x: { ticks: xAxisTicks },
                       yWind: { 
-                        display: hasMetric('wind_speed_avg'),
-                        position: 'left',
-                        title: { display: true, text: 'km/h', color: '#fde047' },
-                        ticks: { color: '#fde047' },
-                        grace: '5%'
+                        display: hasMetric('wind_speed_avg'), 
+                        position: 'left', 
+                        title: { 
+                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                          text: 'km/h', 
+                          color: '#fde047' 
+                        }, 
+                        ticks: { color: '#fde047' }, 
+                        grace: '5%' 
                       },
                       yRain: { 
-                        display: hasMetric('rain_quantity_avg'),
-                        position: 'right',
-                        title: { display: true, text: 'mm/min', color: '#60a5fa' },
-                        ticks: { color: '#60a5fa' },
-                        grid: { drawOnChartArea: false },
-                        grace: '5%'
-                      }
+                        display: hasMetric('rain_quantity_avg'), 
+                        position: 'right', 
+                        title: { 
+                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                          text: 'mm', 
+                          color: '#f472b6' 
+                        }, 
+                        ticks: { color: '#f472b6' }, 
+                        grid: { drawOnChartArea: false }, 
+                        grace: '5%' 
+                      },
                     },
                   }}
                 />

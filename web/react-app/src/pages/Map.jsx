@@ -30,10 +30,23 @@ export default function Map({ onNavigate }) {
             ) : null;
           })}
           <MapAutoCenter stations={stations} />
+          <MapResizer />
         </MapContainer>
       </div>
     </section>
   );
+}
+
+function MapResizer() {
+  const map = useMap();
+  useEffect(() => {
+    map.invalidateSize();
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [map]);
+  return null;
 }
 
 function MapAutoCenter({ stations }) {
@@ -47,7 +60,12 @@ function MapAutoCenter({ stations }) {
 
       if (validPoints.length > 0) {
         const bounds = L.latLngBounds(validPoints);
-        map.fitBounds(bounds, { padding: [50, 50] });
+        // Utilisation d'un court délai pour être sûr que le fitBounds prend en compte
+        // la taille réelle du conteneur (surtout après le invalidateSize)
+        const timer = setTimeout(() => {
+          map.fitBounds(bounds, { padding: [80, 80] });
+        }, 500);
+        return () => clearTimeout(timer);
       }
     }
   }, [stations, map]);

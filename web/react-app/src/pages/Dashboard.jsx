@@ -125,7 +125,7 @@ export default function Dashboard({ refreshSignal }) {
               <p className="text-xs text-on-surface-variant">Fluctuations des températures sur les 24 dernières heures</p>
             </div>
           </div>
-          <div className="h-64 relative">
+          <div className="h-64 md:h-72 relative">
             <WeatherChart
               labels={chart24h.labels}
               datasets={chart24h.datasets}
@@ -148,24 +148,25 @@ export default function Dashboard({ refreshSignal }) {
                     grid: { color: 'rgba(255,255,255,0.05)' },
                     ticks: {
                       maxRotation: 0,
-                      autoSkip: false,
+                      autoSkip: true,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10,
                       callback: function (val, idx, ticks) {
-                        const limit = typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12;
-                        const step = Math.ceil(ticks.length / limit);
                         const isLast = idx === ticks.length - 1;
-                        const isFirst = idx === 0;
-
-                        if (!isLast && !isFirst && idx % step !== 0) return null;
-
                         if (isLast) return "Maintenant";
-
+                        
                         const d = new Date(chart24h.labels[idx]);
                         if (isNaN(d)) return val;
                         return `${d.getHours()}h${d.getMinutes() === 30 ? '30' : '00'}`;
                       }
                     }
                   },
-                  y: { title: { display: true, text: '°C' }, grace: '5%' },
+                  y: { 
+                    title: { 
+                      display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                      text: '°C' 
+                    }, 
+                    grace: '5%' 
+                  },
                 },
               }}
             />
