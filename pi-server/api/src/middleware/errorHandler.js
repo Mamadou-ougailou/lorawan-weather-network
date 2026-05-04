@@ -32,21 +32,23 @@ export function notFound(req, res) {
 /**
  * Global error handler – registered AFTER all routes and the 404 handler.
  * Express identifies this as an error handler because it has four parameters.
- *
- * @param {Error}                       err
- * @param {import("express").Request}   req
- * @param {import("express").Response}  res
- * @param {import("express").NextFunction} next  – required by Express, even if unused
  */
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
-    // Log the full error on the server for debugging
-    console.error(`[ERROR] ${req.method} ${req.path}`, err);
+    const statusCode = err.statusCode || 500;
+    const status = err.status || 'error';
+    
+    // Only log internal server errors (500), hide client errors (400-404) from logs
+    if (statusCode === 500) {
+        console.error(`[ERROR] ${req.method} ${req.path}`, err);
+    }
 
-    const status = err.status ?? err.statusCode ?? 500;
-    const message = status < 500
-        ? err.message           // client errors: safe to expose
-        : "Internal server error"; // server errors: hide internals from clients
+    const message = err.isOperational 
+        ? err.message 
+        : "Internal server error";
 
-    res.status(status).json({ error: message });
+    res.status(statusCode).json({
+        status,
+        message
+    });
 }

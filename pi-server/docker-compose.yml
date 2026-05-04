@@ -61,19 +61,17 @@ services:
       DB_USER: weather
       DB_PASSWORD: weatherdev
       DB_NAME: weather_network
+      # MQTT bridge for real-time WebSocket push
+      MQTT_HOST: mqtt.univ-cotedazur.fr
+      MQTT_PORT: 443
+      MQTT_TLS: "true"
+      MQTT_USERNAME: fablab2122
+      MQTT_PASSWORD: 2122
+      MQTT_CLIENT_ID: weather-api-realtime
+      MQTT_TOPICS: "ttn/v3/fablab2223@ttn/devices/weather-station-davis/up=1,ttn/v3/fablab2223@ttn/devices/l3-arduino-mega-meteo/up=2"
     depends_on:
       mariadb:
         condition: service_healthy
-  # ─── Tunnel Gratuit Cloudflare (Sans compte) ────────────────────────────
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: weather-tunnel
-    command: tunnel --url http://weather-api:3000
-    restart: unless-stopped
-    networks:
-      - weather_net
-    depends_on:
-      - api
 
 volumes:
   weather_pi_db:
