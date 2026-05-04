@@ -70,10 +70,13 @@ export default function WeatherChart({ labels, datasets, options = {} }) {
     interaction: { mode: 'index', intersect: false },
 
     layout: {
-      padding: { right: 40, left: 20 }, // Marge pour être sûr que le premier/dernier label n'est pas coupé
+      padding: typeof window !== 'undefined' && window.innerWidth < 640 
+        ? { right: 10, left: 0, top: 10, bottom: 0 }
+        : { right: 40, left: 20 },
     },
     plugins: {
       legend: {
+        display: typeof window !== 'undefined' && window.innerWidth > 480,
         labels: {
           color:       isDark ? '#cbd5e1' : '#334155',
           font:        { family: "'Inter', 'Space Grotesk', sans-serif", size: 12, weight: '600' },
@@ -108,7 +111,7 @@ export default function WeatherChart({ labels, datasets, options = {} }) {
 
     scales: {
       x: {
-        offset: false,                  // ← supprime le décalage au début
+        offset: false,
         grid:   { display: false },
         border: {
           display:   true,
@@ -117,10 +120,11 @@ export default function WeatherChart({ labels, datasets, options = {} }) {
         },
         ticks: {
           color:     textColor,
-          font:      { family: "'Inter', sans-serif", size: 11 },
-          maxTicksLimit: 12,
+          font:      { family: "'Inter', sans-serif", size: 10 },
+          maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
           padding:   4,
-          major:     { enabled: true },
+          maxRotation: 0,
+          autoSkip: true,
         },
       },
       y: {
@@ -137,9 +141,9 @@ export default function WeatherChart({ labels, datasets, options = {} }) {
         },
         ticks: {
           color:     textColor,
-          font:      { family: "'Inter', sans-serif", size: 11 },
+          font:      { family: "'Inter', sans-serif", size: 10 },
           padding:   8,
-          maxTicksLimit: 6,
+          maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 6,
         },
       },
     },
