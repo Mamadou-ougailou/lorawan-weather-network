@@ -50,13 +50,13 @@ export default function App() {
     <>
       <Sidebar activeSection={activeSection} onNavigate={handleNavigate} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <TopNav lastUpdate={lastUpdate} onRefresh={handleRefresh} setMobileOpen={setMobileOpen} />
-      <main className="lg:ml-64 pt-20 h-screen overflow-y-auto bg-surface transition-colors">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 md:space-y-10">
+      <main className="lg:ml-64 pt-16 h-screen overflow-y-auto bg-surface transition-colors">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 md:space-y-10 animate-fade-up">
           {activeSection === 'dashboard' && <Dashboard refreshSignal={refreshSignal} />}
           {activeSection === 'compare'   && <Compare />}
           {activeSection === 'history'   && <History />}
           {activeSection === 'sky'       && <SkyImages />}
-          {activeSection === 'map'       && <Map />}
+          {activeSection === 'map'       && <Map onNavigate={handleNavigate} />}
         </div>
         <Footer />
       </main>
