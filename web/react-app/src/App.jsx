@@ -10,6 +10,8 @@ import Map       from './pages/Map';
 import { REFRESH_INTERVAL_MS } from './api';
 import { useStations } from './StationsContext';
 
+import MobileNav from './components/MobileNav';
+
 const SECTIONS = ['dashboard', 'compare', 'history', 'sky', 'map'];
 
 export default function App() {
@@ -50,7 +52,7 @@ export default function App() {
     <>
       <Sidebar activeSection={activeSection} onNavigate={handleNavigate} mobileOpen={mobileOpen} setMobileOpen={setMobileOpen} />
       <TopNav lastUpdate={lastUpdate} onRefresh={handleRefresh} setMobileOpen={setMobileOpen} />
-      <main className="lg:ml-64 pt-16 h-screen overflow-y-auto bg-surface transition-colors">
+      <main className="lg:ml-64 pt-16 pb-20 lg:pb-0 h-screen overflow-y-auto bg-surface transition-colors">
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-8 md:space-y-10 animate-fade-up">
           {activeSection === 'dashboard' && <Dashboard refreshSignal={refreshSignal} />}
           {activeSection === 'compare'   && <Compare />}
@@ -60,6 +62,7 @@ export default function App() {
         </div>
         <Footer />
       </main>
+      <MobileNav activeSection={activeSection} onNavigate={handleNavigate} />
     </>
   );
 }

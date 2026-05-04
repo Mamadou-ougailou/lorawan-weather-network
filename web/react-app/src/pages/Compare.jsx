@@ -76,6 +76,11 @@ export default function Compare() {
               datasets={chart.datasets}
               options={{
                 plugins: {
+                  legend: { 
+                    display: true, // Toujours afficher la légende pour la comparaison
+                    position: 'top',
+                    padding: 10
+                  },
                   tooltip: {
                     callbacks: { 
                       title: ctx => {
@@ -90,16 +95,12 @@ export default function Compare() {
                   x: {
                     ticks: {
                       maxRotation: 0,
-                      autoSkip: false,
+                      autoSkip: true,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10,
                       callback(val, idx, ticks) {
-                        const limit = typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12;
-                        const step = Math.ceil(ticks.length / limit);
                         const isLast = idx === ticks.length - 1;
-                        const isFirst = idx === 0;
-
-                        if (!isLast && !isFirst && idx % step !== 0) return null;
-
                         if (isLast) return "Maintenant";
+                        
                         const d = new Date(chart.labels[idx]);
                         if (isNaN(d)) return val;
                         return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
@@ -107,7 +108,11 @@ export default function Compare() {
                     }
                   },
                   y: { 
-                    title: { display: true, text: varLabel, color: '#94a3b8' },
+                    title: { 
+                      display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                      text: varLabel, 
+                      color: '#94a3b8' 
+                    },
                     grace: '5%'
                   },
                 },
