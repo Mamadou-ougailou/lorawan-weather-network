@@ -16,24 +16,37 @@ const VAR_OPTIONS = [
   { value: 'humidity_avg',   label: 'Humidité (%)' },
   { value: 'pressure_avg',   label: 'Pression (hPa)' },
   { value: 'lux_avg',        label: 'Luminosité (lux)' },
-  { value: 'wind_speed_avg', label: 'Vitesse vent (km/h)' },
-  { value: 'rain_quantity_avg',  label: 'Vitesse pluie (mm/min)' },
+  { value: 'wind_speed_avg', label: 'Vitesse duvent (km/h)' },
+  { value: 'rain_quantity_avg',  label: 'Quantité de pluie (mm/min)' },
 ];
 
 export default function Compare() {
   const stations = useStations();
-  const [hours,  setHours]  = useState('24');
+  const [hours,  setHours]  = useState('6');
   const [varKey, setVarKey] = useState('temp_avg');
   const [chart,  setChart]  = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch(ROUTES.compare(hours))
-      .then(data => {
-        if (!cancelled) setChart(buildCompareDatasets(data, varKey, stations));
-      })
-      .catch(e => console.warn('Compare load failed:', e.message));
-    return () => { cancelled = true; };
+    
+    function load() {
+      Promise.all([
+        apiFetch(ROUTES.compare(hours)),
+        apiFetch(ROUTES.latest)
+      ])
+        .then(([data, latest]) => {
+          if (!cancelled) setChart(buildCompareDatasets(data, varKey, stations, hours, latest));
+        })
+        .catch(e => console.warn('Compare load failed:', e.message));
+    }
+    
+    load();
+    const timer = setInterval(load, 60_000);
+    
+    return () => { 
+      cancelled = true; 
+      clearInterval(timer);
+    };
   }, [hours, varKey]);
 
   const varLabel = VAR_OPTIONS.find(o => o.value === varKey)?.label ?? '';
@@ -75,18 +88,28 @@ export default function Compare() {
                 },
                 scales: {
                   x: {
-                    offset: true,
                     ticks: {
                       maxRotation: 0,
-                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
-                      callback(val, idx) {
+                      autoSkip: false,
+                      callback(val, idx, ticks) {
+                        const limit = typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12;
+                        const step = Math.ceil(ticks.length / limit);
+                        const isLast = idx === ticks.length - 1;
+                        const isFirst = idx === 0;
+
+                        if (!isLast && !isFirst && idx % step !== 0) return null;
+
+                        if (isLast) return "Maintenant";
                         const d = new Date(chart.labels[idx]);
                         if (isNaN(d)) return val;
                         return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
                       },
-                    },
+                    }
                   },
-                  y: { title: { display: true, text: varLabel }, grace: '5%' },
+                  y: { 
+                    title: { display: true, text: varLabel, color: '#94a3b8' },
+                    grace: '5%'
+                  },
                 },
               }}
             />
