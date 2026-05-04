@@ -1,14 +1,15 @@
 <!doctype html>
-<html lang="en" class="dark">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    <meta name="google" content="notranslate" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WeatherNet PACA</title>
     <!-- Google Fonts & Material Symbols -->
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Manrope:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    
+
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script id="tailwind-config">
@@ -71,38 +72,132 @@
             },
             fontFamily: {
               "headline": ["Space Grotesk", "sans-serif"],
-              "body": ["Manrope", "sans-serif"],
-              "label": ["Manrope", "sans-serif"]
+              "body":     ["Inter", "Manrope", "sans-serif"],
+              "label":    ["Inter", "Manrope", "sans-serif"]
             },
-            borderRadius: {"DEFAULT": "0.5rem", "lg": "0.5rem", "xl": "1.5rem", "full": "9999px"},
+            borderRadius: {"DEFAULT": "0.5rem", "lg": "0.75rem", "xl": "1.25rem", "full": "9999px"},
           },
         },
       }
     </script>
     <style>
-        :root {
-          --color-surface: 248 250 252;
-          --color-on-surf: 15 23 42;
-          --color-on-surf-var: 71 85 105;
-          --color-surf-low: 241 245 249;
-          --color-surf-cont: 226 232 240;
-          --color-surf-high: 226 232 240;
-          --color-surf-highest: 203 213 225;
-        }
-        
-        html.dark {
-          --color-surface: 11 14 20;
-          --color-on-surf: 236 237 246;
-          --color-on-surf-var: 169 171 179;
-          --color-surf-low: 16 19 26;
-          --color-surf-cont: 22 26 33;
-          --color-surf-high: 28 32 40;
-          --color-surf-highest: 34 38 47;
-        }
-        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .glass-panel { background: rgba(16, 19, 26, 0.7); backdrop-filter: blur(20px); }
-        .hero-gradient { background: linear-gradient(135deg, rgba(255, 145, 83, 0.15) 0%, rgba(11, 14, 20, 0) 60%); }
-        .data-glow { text-shadow: 0 0 20px rgba(255, 145, 83, 0.4); }
+      /* ── Color tokens ── */
+      :root {
+        --color-surface:      248 250 252;
+        --color-on-surf:       15  23  42;
+        --color-on-surf-var:   71  85 105;
+        --color-surf-low:     241 245 249;
+        --color-surf-cont:    226 232 240;
+        --color-surf-high:    226 232 240;
+        --color-surf-highest: 203 213 225;
+      }
+      html.dark {
+        --color-surface:      13  17  23;  /* #0d1117 navy */
+        --color-on-surf:      229 233 240;
+        --color-on-surf-var:  148 155 172;
+        --color-surf-low:      17  22  31;  /* #11161f */
+        --color-surf-cont:     22  28  39;  /* #161c27 */
+        --color-surf-high:     28  36  51;  /* #1c2433 */
+        --color-surf-highest:  36  46  65;  /* #242e41 */
+      }
+
+      /* ── Base ── */
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: 'Inter', 'Manrope', system-ui, sans-serif;
+      }
+
+
+      /* ── Custom scrollbar ── */
+      * { scrollbar-width: thin; scrollbar-color: rgba(255,145,83,.22) transparent; }
+      *::-webkit-scrollbar { width: 4px; height: 4px; }
+      *::-webkit-scrollbar-track { background: transparent; }
+      *::-webkit-scrollbar-thumb { background: rgba(255,145,83,.22); border-radius: 4px; }
+      *::-webkit-scrollbar-thumb:hover { background: rgba(255,145,83,.42); }
+
+      /* ── Material icons ── */
+      .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+      /* ── Glassmorphism panels ── */
+      .glass-panel {
+        background: rgba(12, 16, 26, 0.8);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+      }
+
+      /* ── Hero gradient ── */
+      .hero-gradient { background: linear-gradient(135deg, rgba(255,145,83,.13) 0%, transparent 65%); }
+
+      /* ── Data glow ── */
+      .data-glow { text-shadow: 0 0 30px rgba(255,145,83,.55), 0 0 8px rgba(255,145,83,.3); }
+
+      /* ── Card hover ── */
+      .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
+      .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 20px 52px rgba(0,0,0,.55), 0 0 0 1px rgba(255,145,83,.18);
+        border-color: rgba(255,145,83,.22) !important;
+      }
+
+      /* ── Page fade-up animation ── */
+      @keyframes fade-up {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-up { animation: fade-up 0.38s cubic-bezier(.22,1,.36,1) both; }
+
+      /* ── Live dot pulse ── */
+      @keyframes live-pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(52,211,153,.65); }
+        60%       { box-shadow: 0 0 0 5px rgba(52,211,153,0); }
+      }
+      .live-dot {
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: #34d399;
+        animation: live-pulse 2.2s ease-in-out infinite;
+        flex-shrink: 0;
+      }
+
+      /* ── Refresh spin ── */
+      @keyframes spin-once { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .spin-once { animation: spin-once 0.5s cubic-bezier(.5,0,.5,1); }
+
+      /* ── Sidebar gradient border top ── */
+      .sidebar-gradient-top {
+        position: relative;
+      }
+      .sidebar-gradient-top::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #ff9153 0%, rgba(255,145,83,0) 80%);
+        border-radius: 2px 2px 0 0;
+      }
+
+      /* ── Nav pill ── */
+      .nav-pill {
+        border-radius: 10px;
+        transition: background 0.15s ease, color 0.15s ease;
+        border: 1px solid transparent;
+      }
+      .nav-pill:hover:not(.nav-pill-active) { background: rgba(255,255,255,.045); }
+      .nav-pill-active {
+        background: rgba(255,145,83,.13);
+        border-color: rgba(255,145,83,.18);
+        color: #ff9153 !important;
+      }
+      .nav-pill-active .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+        color: #ff9153;
+      }
+
+      /* ── TopNav clock ── */
+      .topnav-clock {
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+      }
     </style>
   </head>
   <body>

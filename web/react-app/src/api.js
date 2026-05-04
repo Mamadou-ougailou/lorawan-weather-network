@@ -15,25 +15,10 @@ export const ROUTES = {
   images: (site, limit = 12) =>
     site ? `/api/images?site=${site}&limit=${limit}` : `/api/images?limit=${limit}`,
   measurements: (site, limit = 1) => `/api/measurements?site=${site}&limit=${limit}`,
+  stations: "/api/stations",
 };
-
 
 const API_ORIGIN = new URL(API_BASE).origin;
-
-// ─── Couleurs / noms / coordonnées des sites ──────────────────────────────────
-export const SITE_COLORS = {
-  1: "#34d399",  // Nice
-  2: "#f97316",  // Mougins
-  3: "#a78bfa",  // Grasse
-};
-
-export const SITE_NAMES = { 1: "Nice", 2: "Mougins", 3: "Grasse" };
-
-export const SITE_COORDS = {
-  1: [43.710173, 7.261953],  // Nice
-  2: [43.600000, 7.005000],  // Mougins
-  3: [43.658333, 6.925000],  // Grasse
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 export async function apiFetch(path) {

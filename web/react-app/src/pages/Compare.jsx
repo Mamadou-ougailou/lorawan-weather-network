@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { apiFetch, ROUTES, SITE_NAMES, SITE_COLORS, fmt } from '../api';
+import { apiFetch, ROUTES, fmt } from '../api';
+import { useStations } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 import { buildCompareDatasets } from './Dashboard';
 
@@ -15,23 +16,37 @@ const VAR_OPTIONS = [
   { value: 'humidity_avg',   label: 'Humidité (%)' },
   { value: 'pressure_avg',   label: 'Pression (hPa)' },
   { value: 'lux_avg',        label: 'Luminosité (lux)' },
-  { value: 'wind_speed_avg', label: 'Vitesse vent (km/h)' },
-  { value: 'rain_quantity_avg',  label: 'Vitesse pluie (mm/min)' },
+  { value: 'wind_speed_avg', label: 'Vitesse duvent (km/h)' },
+  { value: 'rain_quantity_avg',  label: 'Quantité de pluie (mm/min)' },
 ];
 
 export default function Compare() {
-  const [hours,  setHours]  = useState('24');
+  const stations = useStations();
+  const [hours,  setHours]  = useState('6');
   const [varKey, setVarKey] = useState('temp_avg');
   const [chart,  setChart]  = useState(null);
 
   useEffect(() => {
     let cancelled = false;
-    apiFetch(ROUTES.compare(hours))
-      .then(data => {
-        if (!cancelled) setChart(buildCompareDatasets(data, varKey));
-      })
-      .catch(e => console.warn('Compare load failed:', e.message));
-    return () => { cancelled = true; };
+    
+    function load() {
+      Promise.all([
+        apiFetch(ROUTES.compare(hours)),
+        apiFetch(ROUTES.latest)
+      ])
+        .then(([data, latest]) => {
+          if (!cancelled) setChart(buildCompareDatasets(data, varKey, stations, hours, latest));
+        })
+        .catch(e => console.warn('Compare load failed:', e.message));
+    }
+    
+    load();
+    const timer = setInterval(load, 60_000);
+    
+    return () => { 
+      cancelled = true; 
+      clearInterval(timer);
+    };
   }, [hours, varKey]);
 
   const varLabel = VAR_OPTIONS.find(o => o.value === varKey)?.label ?? '';
@@ -61,6 +76,11 @@ export default function Compare() {
               datasets={chart.datasets}
               options={{
                 plugins: {
+                  legend: { 
+                    display: true, // Toujours afficher la légende pour la comparaison
+                    position: 'top',
+                    padding: 10
+                  },
                   tooltip: {
                     callbacks: { 
                       title: ctx => {
@@ -73,18 +93,28 @@ export default function Compare() {
                 },
                 scales: {
                   x: {
-                    offset: true,
                     ticks: {
                       maxRotation: 0,
-                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
-                      callback(val, idx) {
+                      autoSkip: true,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10,
+                      callback(val, idx, ticks) {
+                        const isLast = idx === ticks.length - 1;
+                        if (isLast) return "Maintenant";
+                        
                         const d = new Date(chart.labels[idx]);
                         if (isNaN(d)) return val;
                         return `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
                       },
-                    },
+                    }
                   },
-                  y: { title: { display: true, text: varLabel }, grace: '5%' },
+                  y: { 
+                    title: { 
+                      display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                      text: varLabel, 
+                      color: '#94a3b8' 
+                    },
+                    grace: '5%'
+                  },
                 },
               }}
             />

@@ -3,7 +3,7 @@ name: Deploy React app to GitHub Pages
 on:
   # Se déclenche quand on pousse le code sur 'main' ou 'camara'
   push:
-    branches: ["main", "camara"]
+    branches: ["main"]
   # Permet de lancer le déploiement manuellement depuis l'interface GitHub
   workflow_dispatch:
 

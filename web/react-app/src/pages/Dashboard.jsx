@@ -30,12 +30,12 @@ export default function Dashboard({ refreshSignal }) {
     try {
       // /api/trend lit directement measurements — données en temps réel, buckets de 30 min
       const data = await apiFetch(ROUTES.trend(6, 30));
-      setChart24h(buildTrendDatasets(data, 'temp_avg'));
+      setChart24h(buildTrendDatasets(data, 'temp_avg', stations, 6, 30));
     } catch {
       // Fallback sur /api/compare si /api/trend n'est pas encore disponible sur le serveur
       try {
         const data = await apiFetch(ROUTES.compare(24));
-        setChart24h(buildCompareDatasets(data, 'temp_avg'));
+        setChart24h(buildCompareDatasets(data, 'temp_avg', stations, 24));
       } catch (e) {
         console.warn('Could not load chart:', e.message);
         setChart24h({ labels: [], datasets: [] }); // affiche un graphique vide plutôt que rien
@@ -51,15 +51,19 @@ export default function Dashboard({ refreshSignal }) {
   }, [load, refreshSignal]);
 
 
-  const mainId = mainStationId;
-  const otherIds = [1, 2, 3].filter(id => id !== mainId);
+  const mainId = mainStationId || (stations[0]?.id ?? 1);
+  const otherIds = stations.map(s => s.id).filter(id => id !== mainId);
   const sMain = latest[mainId] || {};
+  const currentStation = stations.find(s => s.id === mainId);
 
-  const getSiteTag = (id) => {
-    if (id === 1) return { text: "Mougins Center", color: "text-primary", bg: "bg-primary/10" };
-    if (id === 2) return { text: "Grasse Area", color: "text-tertiary", bg: "bg-tertiary/10" };
-    if (id === 3) return { text: "Coastal Hub", color: "text-secondary", bg: "bg-secondary/10" };
-    return { text: `Station ${id}`, color: "text-primary", bg: "bg-primary/10" };
+  const getSiteTag = (st) => {
+    // Juste un effet de couleur semi-aléatoire basé sur l'ID pour les tags
+    const colors = [
+      { color: "text-primary", bg: "bg-primary/10" },
+      { color: "text-tertiary", bg: "bg-tertiary/10" },
+      { color: "text-secondary", bg: "bg-secondary/10" }
+    ];
+    return { text: st ? st.name : "Réseau Local", ...colors[(st?.id || 0) % colors.length] };
   };
 
   return (
@@ -71,7 +75,7 @@ export default function Dashboard({ refreshSignal }) {
               <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
               En Direct
             </div>
-            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{SITE_NAMES[mainId]}</h3>
+            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
               Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
               {wsConnected && (
@@ -87,9 +91,6 @@ export default function Dashboard({ refreshSignal }) {
               <div className="text-5xl md:text-8xl font-black font-headline tracking-tighter text-primary data-glow">
                 {fmt(sMain.temperature, 0)}<span className="text-xl md:text-4xl align-top">°C</span>
               </div>
-              <p className="text-on-surface-variant font-bold uppercase text-[10px] md:text-xs mt-1 md:mt-2 tracking-widest">
-                Batterie: {sMain.battery_pct ?? '--'}%
-              </p>
             </div>
             <div className="relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center shrink-0">
               <div className="absolute inset-0 bg-primary/20 blur-2xl md:blur-3xl rounded-full"></div>
@@ -100,27 +101,31 @@ export default function Dashboard({ refreshSignal }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
-          <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="humidity_percentage" iconColor="text-secondary" />
-          <StatBox label="Pression" value={fmt(sMain.pressure, 0)} unit="hPa" icon="compress" iconColor="text-primary" />
-          <StatBox label="Luminosité" value={sMain.lux != null ? sMain.lux : '–'} unit="lx" icon="light_mode" iconColor="text-tertiary" />
-          <StatBox label="Vitesse Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />
+        <div className="flex flex-wrap gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
+          {sMain.humidity != null && <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="water_drop" iconColor="text-secondary" />}
+          {sMain.pressure != null && <StatBox label="Pression" value={fmt(sMain.pressure, 0)} unit="hPa" icon="compress" iconColor="text-primary" />}
+          {sMain.lux != null && <StatBox label="Luminosité" value={fmt(sMain.lux, 0)} unit="lx" icon="light_mode" iconColor="text-tertiary" />}
+          {sMain.wind_speed != null && <StatBox label="Vit. Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />}
+          {sMain.wind_direction != null && <StatBox label="Dir. Vent" value={fmt(sMain.wind_direction, 0)} unit="°" icon="explore" iconColor="text-primary" />}
+          {sMain.rain_quantity != null && <StatBox label="Pluie" value={fmt(sMain.rain_quantity, 1)} unit="mm" icon="rainy" iconColor="text-tertiary" />}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <section className="flex lg:grid lg:grid-cols-2 gap-4 md:gap-8 overflow-x-auto lg:overflow-x-visible pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
         {otherIds.map(id => {
-          const tagInfo = getSiteTag(id);
+          const st = stations.find(s => s.id === id);
+          const tagInfo = getSiteTag(st);
           return (
-            <SecondaryCard
-              key={id}
-              siteName={SITE_NAMES[id]}
-              data={latest[id] || {}}
-              tag={tagInfo.text}
-              tagColor={tagInfo.color}
-              tagBg={tagInfo.bg}
-              onClick={() => setMainStationId(id)}
-            />
+            <div key={id} className="min-w-[280px] md:min-w-0 flex-shrink-0 lg:flex-shrink">
+              <SecondaryCard
+                siteName={st && st.city ? st.city : `Station ${id}`}
+                data={latest[id] || {}}
+                tag={tagInfo.text}
+                tagColor={tagInfo.color}
+                tagBg={tagInfo.bg}
+                onClick={() => setMainStationId(id)}
+              />
+            </div>
           );
         })}
       </section>
@@ -133,7 +138,7 @@ export default function Dashboard({ refreshSignal }) {
               <p className="text-xs text-on-surface-variant">Fluctuations des températures sur les 24 dernières heures</p>
             </div>
           </div>
-          <div className="h-64 relative">
+          <div className="h-64 md:h-72 relative">
             <WeatherChart
               labels={chart24h.labels}
               datasets={chart24h.datasets}
@@ -153,19 +158,28 @@ export default function Dashboard({ refreshSignal }) {
                 },
                 scales: {
                   x: {
-                    offset: true,
                     grid: { color: 'rgba(255,255,255,0.05)' },
                     ticks: {
                       maxRotation: 0,
-                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 5 : 12,
-                      callback: function (val, idx) {
+                      autoSkip: true,
+                      maxTicksLimit: typeof window !== 'undefined' && window.innerWidth < 640 ? 4 : 10,
+                      callback: function (val, idx, ticks) {
+                        const isLast = idx === ticks.length - 1;
+                        if (isLast) return "Maintenant";
+                        
                         const d = new Date(chart24h.labels[idx]);
                         if (isNaN(d)) return val;
-                        return `${d.getHours()}h`;
+                        return `${d.getHours()}h${d.getMinutes() === 30 ? '30' : '00'}`;
                       }
                     }
                   },
-                  y: { title: { display: true, text: '°C' }, grace: '5%' },
+                  y: { 
+                    title: { 
+                      display: typeof window !== 'undefined' && window.innerWidth > 640, 
+                      text: '°C' 
+                    }, 
+                    grace: '5%' 
+                  },
                 },
               }}
             />
@@ -178,7 +192,7 @@ export default function Dashboard({ refreshSignal }) {
 
 function StatBox({ label, value, unit, icon, iconColor }) {
   return (
-    <div className="bg-surface-container-highest/50 backdrop-blur-md p-4 md:p-6 rounded-xl border border-outline-variant">
+    <div className="bg-surface-container-highest/50 backdrop-blur-md p-4 md:p-6 rounded-xl border border-outline-variant flex-1 min-w-[140px] md:min-w-[180px]">
       <p className="text-on-surface-variant text-[9px] md:text-[10px] font-bold uppercase tracking-widest mb-2 md:mb-4">{label}</p>
       <div className="flex items-end justify-between">
         <span className="text-xl md:text-2xl font-headline font-bold">{value}<span className="text-xs md:text-sm font-normal text-on-surface-variant ml-1">{unit}</span></span>
@@ -189,72 +203,127 @@ function StatBox({ label, value, unit, icon, iconColor }) {
 }
 
 function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
+  const metrics = [
+    { key: 'humidity',       label: 'Humidité', unit: '%',    icon: 'water_drop' },
+    { key: 'pressure',       label: 'Pression', unit: ' hPa', icon: 'compress' },
+    { key: 'wind_speed',     label: 'Vent',     unit: ' km/h', icon: 'air' },
+    { key: 'rain_quantity',  label: 'Pluie',    unit: ' mm',   icon: 'rainy' },
+    { key: 'lux',            label: 'Lux',      unit: ' lx',   icon: 'light_mode' },
+  ].filter(m => data[m.key] != null);
+
   return (
     <div
       onClick={onClick}
-      className="bg-surface-container-high rounded-xl p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer"
+      className="bg-surface-container-high rounded-xl p-4 md:p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer h-full flex flex-col justify-between"
     >
-      <div className="flex justify-between items-start mb-10">
+      <div className="flex justify-between items-start mb-4 md:mb-10">
         <div>
-          <span className={`inline-block px-3 py-1 ${tagBg} ${tagColor} text-[10px] font-bold rounded-full mb-4 uppercase tracking-tighter`}>{tag}</span>
-          <h4 className="text-3xl font-black font-headline tracking-tighter">{siteName}</h4>
+          <span className={`inline-block px-2 py-0.5 ${tagBg} ${tagColor} text-[9px] font-bold rounded-full mb-2 uppercase tracking-tighter`}>{tag}</span>
+          <h4 className="text-xl md:text-3xl font-black font-headline tracking-tighter leading-none">{siteName}</h4>
         </div>
         <div className="text-right">
-          <div className="text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
-          <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-widest mt-1">
-            Batterie: {data.battery_pct ?? '--'}%
-          </p>
+          <div className="text-2xl md:text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between">
-          <span className="material-symbols-outlined text-on-surface-variant">water_drop</span>
-          <div className="text-right">
-            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Humidité</p>
-            <p className="font-headline font-bold">{fmt(data.humidity, 0)}%</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
+        {metrics.map(m => (
+          <div key={m.key} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex items-center justify-between">
+            <span className="material-symbols-outlined text-on-surface-variant text-[12px] md:text-sm">{m.icon}</span>
+            <div className="text-right ml-2">
+              <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold leading-none">{m.label}</p>
+              <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[m.key], m.key.includes('speed') ? 1 : 0)}{m.unit}</p>
+            </div>
           </div>
-        </div>
-        <div className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between">
-          <span className="material-symbols-outlined text-on-surface-variant">air</span>
-          <div className="text-right">
-            <p className="text-[10px] text-on-surface-variant uppercase font-bold">Vent</p>
-            <p className="font-headline font-bold">{fmt(data.wind_speed, 1)} km/h</p>
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-export function buildTrendDatasets(rows, field) {
-  const hourSet = [...new Set(rows.map(r => r.bucket))].sort();
-  const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
-    const siteRows = rows.filter(r => String(r.site_id) === id);
-    const byHour = Object.fromEntries(siteRows.map(r => [r.bucket, r[field]]));
+export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 30) {
+  const nbMins = parseInt(hours, 10) * 60;
+  const now = new Date();
+  
+  // Arrondir à l'intervalle le plus proche
+  const remainder = now.getMinutes() % interval;
+  now.setMinutes(now.getMinutes() - remainder, 0, 0);
+
+  const bucketSet = [];
+  const steps = Math.floor(nbMins / interval);
+  
+  // Créer l'axe de temps complet, jusqu'à maintenant
+  for (let i = steps - 1; i >= 0; i--) {
+    bucketSet.push(new Date(now.getTime() - i * interval * 60000).toISOString());
+  }
+
+  const datasets = stations.map(station => {
+    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
+    const byBucket = {};
+    siteRows.forEach(r => {
+      const d = new Date(r.bucket);
+      // S'assurer que le bucket correspond à l'arrondi (pour le dictionnaire)
+      const r_rem = d.getMinutes() % interval;
+      d.setMinutes(d.getMinutes() - r_rem, 0, 0);
+      byBucket[d.toISOString()] = r[field];
+    });
+
     return {
-      label: name,
-      data: hourSet.map(h => byHour[h] ?? null),
-      borderColor: SITE_COLORS[id],
-      backgroundColor: SITE_COLORS[id] + '22',
+      label: station.name,
+      data: bucketSet.map(b => byBucket[b] ?? null),
+      borderColor: station.color,
+      backgroundColor: station.color + '22',
       fill: true,
       tension: 0.3,
       pointRadius: 2,
       spanGaps: true,
     };
   });
-  return { labels: hourSet, datasets };
+  return { labels: bucketSet, datasets };
 }
 
-export function buildCompareDatasets(rows, field) {
-  const hourSet = [...new Set(rows.map(r => r.hour_start || r.hour))].sort();
-  const datasets = Object.entries(SITE_NAMES).map(([id, name]) => {
-    const siteRows = rows.filter(r => String(r.site_id) === id);
-    const byHour = Object.fromEntries(siteRows.map(r => [r.hour_start || r.hour, r[field]]));
+export function buildCompareDatasets(rows, field, stations, hours = 24, latest = null) {
+  const nbHours = parseInt(hours, 10);
+  const now = new Date();
+  now.setMinutes(0, 0, 0, 0);
+
+  const hourSet = [];
+  for (let i = nbHours - 1; i >= 0; i--) {
+    hourSet.push(new Date(now.getTime() - i * 3600000).toISOString());
+  }
+
+  const FIELD_MAP = {
+    temp_avg: 'temperature',
+    humidity_avg: 'humidity',
+    pressure_avg: 'pressure',
+    lux_avg: 'lux',
+    wind_speed_avg: 'wind_speed',
+    rain_quantity_avg: 'rain_quantity'
+  };
+  const latestField = FIELD_MAP[field] || field;
+
+  const datasets = stations.map(station => {
+    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
+    const byHour = {};
+    siteRows.forEach(r => {
+      const d = new Date(r.hour_start || r.hour);
+      d.setMinutes(0,0,0,0);
+      byHour[d.toISOString()] = r[field];
+    });
+
     return {
-      label: name,
-      data: hourSet.map(h => byHour[h] ?? null),
-      borderColor: SITE_COLORS[id],
-      backgroundColor: SITE_COLORS[id] + '22',
+      label: station.name,
+      data: hourSet.map((h, idx) => {
+        // Remplacer la dernière valeur par la donnée en temps réel (Maintenant)
+        if (idx === hourSet.length - 1 && latest) {
+          const stLatest = latest.find(l => String(l.site_id) === String(station.id));
+          if (stLatest && stLatest[latestField] != null) {
+            return stLatest[latestField];
+          }
+        }
+        return byHour[h] ?? null;
+      }),
+      borderColor: station.color,
+      backgroundColor: station.color + '22',
       fill: true,
       tension: 0.3,
       pointRadius: 2,

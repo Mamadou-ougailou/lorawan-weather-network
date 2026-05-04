@@ -7,6 +7,16 @@
   padding: 0;
 }
 
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 :root {
   /* Premium Dark Theme */
   --color-bg-base:     #050814;
@@ -740,12 +750,60 @@ main {
   }
 }
 
-@media (max-width: 480px) {
-  .card-metrics {
-    grid-template-columns: 1fr;
-  }
-  
-  .logo-text {
-    font-size: 1.1rem;
-  }
+/* ─── Custom Map Pins ───────────────────────────────────────────────────── */
+.custom-pin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  height: 32px;
+  background: #000;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  border: 1.5px solid #fff;
+  transition: all 0.3s ease;
+}
+
+.custom-pin::after {
+  content: '';
+  width: 22px;
+  height: 22px;
+  background: var(--pin-color, #fff);
+  position: absolute;
+  border-radius: 50%;
+  transform: rotate(45deg);
+}
+
+.pin-icon {
+  position: absolute;
+  transform: rotate(45deg);
+  z-index: 10;
+  font-size: 14px !important;
+  color: #000;
+  font-weight: bold;
+}
+
+.custom-pin.selected {
+  width: 42px;
+  height: 42px;
+  z-index: 1000 !important;
+  box-shadow: 0 0 15px var(--pin-color);
+  animation: pin-pulse 1.5s infinite ease-out;
+}
+
+.custom-pin.selected::after {
+  width: 30px;
+  height: 30px;
+}
+
+.custom-pin.selected .pin-icon {
+  font-size: 18px !important;
+}
+
+@keyframes pin-pulse {
+  0% { transform: rotate(-45deg) scale(1); }
+  50% { transform: rotate(-45deg) scale(1.1); }
+  100% { transform: rotate(-45deg) scale(1); }
 }
