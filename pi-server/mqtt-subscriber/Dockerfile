@@ -5,10 +5,9 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app/datacenter/
+COPY main.py parsers.py ./
 
-ENV PYTHONPATH=/app/datacenter
 ENV PYTHONUNBUFFERED=1
 
-ENTRYPOINT ["python", "/app/datacenter/main.py"]
+ENTRYPOINT ["python", "main.py"]
 CMD ["--config", "/app/config.ini"]

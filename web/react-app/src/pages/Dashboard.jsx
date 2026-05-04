@@ -1,22 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiFetch, ROUTES, fmt } from '../api';
-import { useStations } from '../StationsContext';
+import { apiFetch, ROUTES, SITE_COLORS, SITE_NAMES, fmt } from '../api';
+import useWeatherSocket from '../hooks/useWeatherSocket';
 import WeatherChart from '../components/WeatherChart';
 
 export default function Dashboard({ refreshSignal }) {
-  const stations = useStations();
-  const [latest, setLatest] = useState({});
+  const [restLatest, setRestLatest] = useState({});
   const [chart24h, setChart24h] = useState(null);
-  
-  // Défaut au premier ID de station si non défini
-  const [mainStationId, setMainStationId] = useState(0);
+  const [mainStationId, setMainStationId] = useState(1);
+
+  // ── Real-time MQTT → Socket.IO data ──────────────────────────────────
+  const { latest: liveData, connected: wsConnected } = useWeatherSocket();
+
+  // Merge: live data takes precedence over REST data
+  const latest = { ...restLatest };
+  for (const [siteId, data] of Object.entries(liveData)) {
+    latest[siteId] = { ...latest[siteId], ...data };
+  }
 
   const load = useCallback(async () => {
     try {
       const rows = await apiFetch(ROUTES.latest);
       const byId = {};
       rows.forEach(r => { byId[r.site_id] = r; });
-      setLatest(byId);
+      setRestLatest(byId);
     } catch (e) {
       console.warn('Could not load latest measurements:', e.message);
     }
@@ -72,6 +78,12 @@ export default function Dashboard({ refreshSignal }) {
             <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
               Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
+              {wsConnected && (
+                <span className="inline-flex items-center gap-1 ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                  Live
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-4 md:gap-8 justify-between md:justify-end mt-4 md:mt-0 w-full md:w-auto">
