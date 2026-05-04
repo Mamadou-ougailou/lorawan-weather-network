@@ -99,20 +99,21 @@ export default function Dashboard({ refreshSignal }) {
         </div>
       </section>
 
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <section className="flex lg:grid lg:grid-cols-2 gap-4 md:gap-8 overflow-x-auto lg:overflow-x-visible pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
         {otherIds.map(id => {
           const st = stations.find(s => s.id === id);
           const tagInfo = getSiteTag(st);
           return (
-            <SecondaryCard
-              key={id}
-              siteName={st && st.city ? st.city : `Station ${id}`}
-              data={latest[id] || {}}
-              tag={tagInfo.text}
-              tagColor={tagInfo.color}
-              tagBg={tagInfo.bg}
-              onClick={() => setMainStationId(id)}
-            />
+            <div key={id} className="min-w-[280px] md:min-w-0 flex-shrink-0 lg:flex-shrink">
+              <SecondaryCard
+                siteName={st && st.city ? st.city : `Station ${id}`}
+                data={latest[id] || {}}
+                tag={tagInfo.text}
+                tagColor={tagInfo.color}
+                tagBg={tagInfo.bg}
+                onClick={() => setMainStationId(id)}
+              />
+            </div>
           );
         })}
       </section>
@@ -201,24 +202,24 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
   return (
     <div
       onClick={onClick}
-      className="bg-surface-container-high rounded-xl p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer"
+      className="bg-surface-container-high rounded-xl p-4 md:p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer h-full flex flex-col justify-between"
     >
-      <div className="flex justify-between items-start mb-10">
+      <div className="flex justify-between items-start mb-4 md:mb-10">
         <div>
-          <span className={`inline-block px-3 py-1 ${tagBg} ${tagColor} text-[10px] font-bold rounded-full mb-4 uppercase tracking-tighter`}>{tag}</span>
-          <h4 className="text-3xl font-black font-headline tracking-tighter">{siteName}</h4>
+          <span className={`inline-block px-2 py-0.5 ${tagBg} ${tagColor} text-[9px] font-bold rounded-full mb-2 uppercase tracking-tighter`}>{tag}</span>
+          <h4 className="text-xl md:text-3xl font-black font-headline tracking-tighter leading-none">{siteName}</h4>
         </div>
         <div className="text-right">
-          <div className="text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
+          <div className="text-2xl md:text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
         {metrics.map(m => (
-          <div key={m.key} className="bg-surface-container-low p-4 rounded-xl flex items-center justify-between">
-            <span className="material-symbols-outlined text-on-surface-variant text-sm">{m.icon}</span>
-            <div className="text-right">
-              <p className="text-[10px] text-on-surface-variant uppercase font-bold">{m.label}</p>
-              <p className="text-sm font-headline font-bold">{fmt(data[m.key], m.key.includes('speed') ? 1 : 0)}{m.unit}</p>
+          <div key={m.key} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex items-center justify-between">
+            <span className="material-symbols-outlined text-on-surface-variant text-[12px] md:text-sm">{m.icon}</span>
+            <div className="text-right ml-2">
+              <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold leading-none">{m.label}</p>
+              <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[m.key], m.key.includes('speed') ? 1 : 0)}{m.unit}</p>
             </div>
           </div>
         ))}
