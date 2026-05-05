@@ -16,7 +16,7 @@ function Clock() {
 }
 
 // ── TopNav ───────────────────────────────────────────────────────
-export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
+export default function TopNav({ lastUpdate, onRefresh, setMobileOpen, onAdmin }) {
   const [isDark,   setIsDark]   = useState(true);
   const [spinning, setSpinning] = useState(false);
 
@@ -115,6 +115,21 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
               {isDark ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
+
+          {onAdmin && (
+            <button
+              onClick={onAdmin}
+              title="Interface Admin"
+              className="
+                flex items-center justify-center w-9 h-9
+                text-on-surface-variant hover:text-primary
+                hover:bg-primary/10
+                rounded-xl transition-all duration-200
+              "
+            >
+              <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
+            </button>
+          )}
         </div>
       </div>
     </header>
