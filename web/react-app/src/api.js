@@ -12,10 +12,9 @@ export const ROUTES = {
   compare: (hours) => `/api/compare?hours=${hours}`,
   trend:   (hours, interval = 30) => `/api/trend?hours=${hours}&interval=${interval}`,
   history: (site, hours) => `/api/history?site=${site}&hours=${hours}`,
-  images: (site, limit = 12) =>
-    site ? `/api/images?site=${site}&limit=${limit}` : `/api/images?limit=${limit}`,
   measurements: (site, limit = 1) => `/api/measurements?site=${site}&limit=${limit}`,
   stations: "/api/stations",
+  mappings: "/api/mappings",
 };
 
 const API_ORIGIN = new URL(API_BASE).origin;

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, ROUTES, fmt } from '../api';
-import { useStations } from '../StationsContext';
+import { useStations, useMappings } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 import { buildCompareDatasets } from './Dashboard';
 
@@ -11,20 +11,30 @@ const PERIOD_OPTIONS = [
   { value: '168', label: '7 derniers jours' },
 ];
 
-const VAR_OPTIONS = [
-  { value: 'temp_avg',       label: 'Température (°C)' },
-  { value: 'humidity_avg',   label: 'Humidité (%)' },
-  { value: 'pressure_avg',   label: 'Pression (hPa)' },
-  { value: 'lux_avg',        label: 'Luminosité (lux)' },
-  { value: 'wind_speed_avg', label: 'Vitesse duvent (km/h)' },
-  { value: 'rain_quantity_avg',  label: 'Quantité de pluie (mm/min)' },
-];
-
 export default function Compare() {
   const stations = useStations();
   const [hours,  setHours]  = useState('6');
-  const [varKey, setVarKey] = useState('temp_avg');
+  const [varKey, setVarKey] = useState('temperatureAvg');
   const [chart,  setChart]  = useState(null);
+  const [varOptions, setVarOptions] = useState([
+    { value: 'temperatureAvg', label: 'Temperature' }
+  ]);
+
+  const mappings = useMappings();
+
+  useEffect(() => {
+    if (mappings && mappings.length > 0) {
+      const options = mappings.map(m => {
+          const camelAlias = m.alias.replace(/_([a-z])/g, (_, ch) => ch.toUpperCase());
+          return {
+              value: camelAlias + 'Avg',
+              label: m.alias.charAt(0).toUpperCase() + m.alias.slice(1).replace(/_/g, ' ')
+          };
+      });
+      setVarOptions(options);
+      setVarKey(prev => options.find(o => o.value === prev) ? prev : options[0].value);
+    }
+  }, [mappings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -47,9 +57,9 @@ export default function Compare() {
       cancelled = true; 
       clearInterval(timer);
     };
-  }, [hours, varKey]);
+  }, [hours, varKey, stations]);
 
-  const varLabel = VAR_OPTIONS.find(o => o.value === varKey)?.label ?? '';
+  const varLabel = varOptions.find(o => o.value === varKey)?.label ?? '';
 
   return (
     <section className="animate-in fade-in duration-500">
@@ -64,7 +74,7 @@ export default function Compare() {
         <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[200px] max-w-xs">
           Variable :
           <select value={varKey} onChange={e => setVarKey(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
-            {VAR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {varOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
       </div>

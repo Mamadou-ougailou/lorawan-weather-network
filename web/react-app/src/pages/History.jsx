@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiFetch, ROUTES } from '../api';
-import { useStations } from '../StationsContext';
+import { useStations, useMappings } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
+import { getSensorMeta, toCamel } from '../utils/sensorMeta';
 
 const PERIOD_OPTIONS = [
   { value: '24',  label: 'Dernières 24h' },
@@ -12,9 +13,16 @@ const PERIOD_OPTIONS = [
 
 export default function History() {
   const stations = useStations();
+  const mappings = useMappings();
   const [site,  setSite]  = useState(stations.length > 0 ? String(stations[0].id) : '');
   const [hours, setHours] = useState('24');
   const [charts, setCharts] = useState(null);
+
+  useEffect(() => {
+    if (!site && stations.length > 0) {
+      setSite(String(stations[0].id));
+    }
+  }, [stations, site]);
 
   useEffect(() => {
     if (site) {
@@ -32,14 +40,17 @@ export default function History() {
         apiFetch(ROUTES.latest)
       ]);
       
-      const stLatest = latestRows.find(l => String(l.site_id) === String(site));
+      const stLatest = latestRows.find(l => String(l.siteId) === String(site));
       const nbHours = parseInt(hours, 10);
       const now = new Date();
       now.setMinutes(0, 0, 0, 0); // On s'aligne sur l'heure pleine actuelle
 
       const dataMap = {};
       data.forEach(r => {
-        const d = new Date(r.hour_start);
+        // L'API renvoie hourStart (camelCase) en UTC sans suffixe Z (ex: "2026-05-05 08:00:00")
+        // On ajoute 'Z' pour forcer JavaScript à l'interpréter comme UTC (sinon 2h de décalage)
+        const raw = r.hourStart || r.hour_start || '';
+        const d = new Date(raw.includes('Z') || raw.includes('+') ? raw : raw.replace(' ', 'T') + 'Z');
         const key = `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
         dataMap[key] = r;
       });
@@ -56,25 +67,20 @@ export default function History() {
         labels.push(isLast ? "Maintenant" : key);
         
         if (isLast && stLatest) {
-          rows.push({
-            hour_start: t.toISOString(),
-            temp_avg: stLatest.temperature,
-            humidity_avg: stLatest.humidity,
-            pressure_avg: stLatest.pressure,
-            wind_speed_avg: stLatest.wind_speed,
-            rain_quantity_avg: stLatest.rain_quantity
+          const latestData = { hour_start: t.toISOString() };
+          mappings.forEach(m => {
+            const camelAlias = toCamel(m.alias);
+            if (stLatest[camelAlias] != null) {
+              latestData[`${camelAlias}Avg`] = stLatest[camelAlias];
+            }
           });
+          rows.push(latestData);
         } else if (dataMap[key]) {
           rows.push(dataMap[key]);
         } else {
           // Point de donnée "vide" si le capteur n'a rien envoyé
           rows.push({
-            hour_start: t.toISOString(),
-            temp_avg: null,
-            humidity_avg: null,
-            pressure_avg: null,
-            wind_speed_avg: null,
-            rain_quantity_avg: null
+            hour_start: t.toISOString()
           });
         }
       }
@@ -86,9 +92,20 @@ export default function History() {
   }
 
   function exportCSV() {
-    if (!charts || !charts.rows) return;
+    if (!charts || !charts.rows || charts.rows.length === 0) return;
 
-    const headers = ['Date', 'Heure', 'Température (°C)', 'Humidité (%)', 'Pression (hPa)', 'Vent (km/h)', 'Pluie (mm)'];
+    // Récupérer toutes les clés configurées qui ont au moins une valeur
+    const activeKeys = mappings
+      .map(m => toCamel(m.alias) + 'Avg')
+      .filter(k => charts.rows.some(r => r[k] != null));
+    
+    const sensorKeys = Array.from(new Set(activeKeys));
+
+    const headers = ['Date', 'Heure', ...sensorKeys.map(k => {
+      const meta = getSensorMeta(k);
+      return `${meta.label} (${meta.unit.trim()})`;
+    })];
+    
     const csvRows = [headers.join(';')];
 
     charts.rows.forEach(r => {
@@ -107,11 +124,7 @@ export default function History() {
       const rowData = [
         dateStr,
         timeStr,
-        r.temp_avg !== null ? r.temp_avg : '',
-        r.humidity_avg !== null ? r.humidity_avg : '',
-        r.pressure_avg !== null ? r.pressure_avg : '',
-        r.wind_speed_avg !== null ? r.wind_speed_avg : '',
-        r.rain_quantity_avg !== null ? r.rain_quantity_avg : ''
+        ...sensorKeys.map(k => r[k] != null ? r[k] : '')
       ];
       
       // Conversion des points en virgules pour l'ouverture native dans Excel (FR)
@@ -174,23 +187,23 @@ export default function History() {
       {charts && (
         <div className="grid grid-cols-1 gap-6 relative z-10 mb-8">
           {/* Temp & Hum Section */}
-          {(hasMetric('temp_avg') || hasMetric('humidity_avg')) && (
+          {(hasMetric('temperatureAvg') || hasMetric('humidityAvg')) && (
             <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
               <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">
-                {[hasMetric('temp_avg') && 'Température', hasMetric('humidity_avg') && 'Humidité'].filter(Boolean).join(' & ')}
+                {[hasMetric('temperatureAvg') && 'Température', hasMetric('humidityAvg') && 'Humidité'].filter(Boolean).join(' & ')}
               </h3>
               <div className="relative h-[300px] w-full grow">
                 <WeatherChart
                   labels={charts.labels}
                   datasets={[
-                    hasMetric('temp_avg') && {
+                    hasMetric('temperatureAvg') && {
                       label: 'Température (°C)',
-                      data: charts.rows.map(r => r.temp_avg),
+                      data: charts.rows.map(r => r.temperatureAvg),
                       borderColor: '#f97316', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yT',
                     },
-                    hasMetric('humidity_avg') && {
+                    hasMetric('humidityAvg') && {
                       label: 'Humidité (%)',
-                      data: charts.rows.map(r => r.humidity_avg),
+                      data: charts.rows.map(r => r.humidityAvg),
                       borderColor: '#38bdf8', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yH',
                     },
                   ].filter(Boolean)}
@@ -198,7 +211,7 @@ export default function History() {
                     scales: {
                       x: { ticks: xAxisTicks },
                       yT: { 
-                        display: hasMetric('temp_avg'), 
+                        display: hasMetric('temperatureAvg'), 
                         position: 'left', 
                         title: { 
                           display: typeof window !== 'undefined' && window.innerWidth > 640, 
@@ -209,7 +222,7 @@ export default function History() {
                         grace: '5%' 
                       },
                       yH: { 
-                        display: hasMetric('humidity_avg'), 
+                        display: hasMetric('humidityAvg'), 
                         position: 'right', 
                         title: { 
                           display: typeof window !== 'undefined' && window.innerWidth > 640, 
@@ -228,7 +241,7 @@ export default function History() {
           )}
 
           {/* Pressure Section */}
-          {hasMetric('pressure_avg') && (
+          {hasMetric('pressureAvg') && (
             <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
               <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">Pression</h3>
               <div className="relative h-[300px] w-full grow">
@@ -236,7 +249,7 @@ export default function History() {
                   labels={charts.labels}
                   datasets={[{
                     label: 'Pression (hPa)',
-                    data: charts.rows.map(r => r.pressure_avg),
+                    data: charts.rows.map(r => r.pressureAvg),
                     borderColor: '#a78bfa', fill: false, tension: 0.3, pointRadius: 2,
                   }]}
                   options={{
@@ -251,23 +264,23 @@ export default function History() {
           )}
 
           {/* Wind & Rain Section */}
-          {(hasMetric('wind_speed_avg') || hasMetric('rain_quantity_avg')) && (
+          {(hasMetric('windSpeedAvg') || hasMetric('rainQuantityAvg')) && (
             <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
               <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">
-                {[hasMetric('wind_speed_avg') && 'Vent', hasMetric('rain_quantity_avg') && 'Pluie'].filter(Boolean).join(' & ')}
+                {[hasMetric('windSpeedAvg') && 'Vent', hasMetric('rainQuantityAvg') && 'Pluie'].filter(Boolean).join(' & ')}
               </h3>
               <div className="relative h-[300px] lg:h-[400px] w-full grow">
                 <WeatherChart
                   labels={charts.labels}
                   datasets={[
-                    hasMetric('wind_speed_avg') && {
+                    hasMetric('windSpeedAvg') && {
                       label: 'Vitesse du vent (km/h)',
-                      data: charts.rows.map(r => r.wind_speed_avg),
+                      data: charts.rows.map(r => r.windSpeedAvg),
                       borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yWind',
                     },
-                    hasMetric('rain_quantity_avg') && {
+                    hasMetric('rainQuantityAvg') && {
                       label: 'Quantité de pluie (mm/min)',
-                      data: charts.rows.map(r => r.rain_quantity_avg),
+                      data: charts.rows.map(r => r.rainQuantityAvg),
                       borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yRain',
                     }
                   ].filter(Boolean)}
@@ -275,7 +288,7 @@ export default function History() {
                     scales: {
                       x: { ticks: xAxisTicks },
                       yWind: { 
-                        display: hasMetric('wind_speed_avg'), 
+                        display: hasMetric('windSpeedAvg'), 
                         position: 'left', 
                         title: { 
                           display: typeof window !== 'undefined' && window.innerWidth > 640, 
@@ -286,7 +299,7 @@ export default function History() {
                         grace: '5%' 
                       },
                       yRain: { 
-                        display: hasMetric('rain_quantity_avg'), 
+                        display: hasMetric('rainQuantityAvg'), 
                         position: 'right', 
                         title: { 
                           display: typeof window !== 'undefined' && window.innerWidth > 640, 
