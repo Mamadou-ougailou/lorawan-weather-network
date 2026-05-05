@@ -33,6 +33,12 @@ const config = {
         // e.g. "ttn/v3/.../up=1,ttn/v3/.../up=2"
         topics: process.env.MQTT_TOPICS ?? "ttn/v3/fablab2223@ttn/devices/weather-station-davis/up=1,ttn/v3/fablab2223@ttn/devices/l3-arduino-mega-meteo/up=2",
     },
+
+    /** JWT authentication */
+    jwt: {
+        secret: process.env.JWT_SECRET ?? "dev-secret-change-me-in-production",
+        expiresIn: process.env.JWT_EXPIRES_IN ?? "24h",
+    },
 };
 
 export default config;

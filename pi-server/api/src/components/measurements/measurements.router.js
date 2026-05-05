@@ -1,5 +1,6 @@
 import { Router } from "express";
 import * as measurementsController from "./measurements.controller.js";
+import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 
 const router = Router();
 
@@ -10,6 +11,6 @@ router.route("/measurements")
     .get(measurementsController.getMeasurements);
 
 router.route("/measurements/:id")
-    .delete(measurementsController.deleteMeasurement);
+    .delete(requireAuth, requireRole("admin"), measurementsController.deleteMeasurement);
 
 export default router;

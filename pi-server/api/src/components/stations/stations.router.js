@@ -1,14 +1,15 @@
 import { Router } from "express";
 import * as stationsController from "./stations.controller.js";
+import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 
 const router = Router();
 
 router.route("/stations")
     .get(stationsController.getAllStations)
-    .post(stationsController.createStation);
+    .post(requireAuth, requireRole("admin"), stationsController.createStation);
 
 router.route("/stations/:id")
-    .patch(stationsController.updateStation)
-    .delete(stationsController.deleteStation);
+    .patch(requireAuth, requireRole("admin"), stationsController.updateStation)
+    .delete(requireAuth, requireRole("admin"), stationsController.deleteStation);
 
 export default router;

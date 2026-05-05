@@ -35,6 +35,21 @@ VALUES
   (3, 'Station Grasse',  'Grasse',  43.658333, 6.925000, 333, 'Lycée de Grasse')
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
+-- ─── Users (authentification) ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS users (
+    id              INT UNSIGNED     NOT NULL AUTO_INCREMENT,
+    email           VARCHAR(255)     NOT NULL UNIQUE,
+    password_hash   VARCHAR(255)     NOT NULL,
+    role            ENUM('admin', 'viewer') NOT NULL DEFAULT 'viewer',
+    created_at      DATETIME(3)      NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id)
+) ENGINE=InnoDB;
+
+-- Compte admin par défaut (mot de passe : admin123)
+-- hash bcrypt de "admin123" avec 10 rounds
+INSERT IGNORE INTO users (email, password_hash, role) VALUES
+    ('admin@weather.local', '$2b$10$5/NZ2Iweyc8C6.rCxCLCYOXICLAMHFgn8CWuwg6Z8RamFoul6hAy6', 'admin');
+
 -- ─── Sensor Mappings ─────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS sensor_mappings (
     id              SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,

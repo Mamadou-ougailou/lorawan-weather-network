@@ -33,6 +33,9 @@ import alertsRouter from "./components/alerts/alerts.router.js";
 import mappingsRouter from "./components/mappings/mappings.router.js";
 import { loadMappings } from "./components/mappings/mappings.service.js";
 
+import authRouter from "./components/auth/auth.router.js";
+import usersRouter from "./components/users/users.router.js";
+
 // ─── Middleware ───────────────────────────────────────────────────────────────
 import { notFound, errorHandler } from "./middleware/errorHandler.js";
 
@@ -75,6 +78,8 @@ app.use("/api", measurementsRouter); // GET /api/latest, /api/measurements, DELE
 app.use("/api", historyRouter);      // GET /api/history, /api/compare
 app.use("/api", alertsRouter);       // GET, PUT, DELETE /api/alerts
 app.use("/api", mappingsRouter);     // GET, POST, PUT, DELETE /api/mappings
+app.use("/api", authRouter);         // POST /auth/login, GET /auth/me
+app.use("/api", usersRouter);        // GET, POST, PATCH, DELETE /api/users (admin only)
 
 import { liveCache } from "./mqttBridge.js";
 app.get("/api/live", (req, res) => res.json(liveCache));
