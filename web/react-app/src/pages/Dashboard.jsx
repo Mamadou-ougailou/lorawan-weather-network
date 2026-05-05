@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { apiFetch, ROUTES, fmt } from '../api';
-import { useStations } from '../StationsContext';
+import { useStations, useMappings } from '../StationsContext';
 import useWeatherSocket from '../hooks/useWeatherSocket';
 import WeatherChart from '../components/WeatherChart';
+import { getSensorMeta, toCamel } from '../utils/sensorMeta';
 
 export default function Dashboard({ refreshSignal }) {
   const stations = useStations();
+  const mappings = useMappings();
   const [restLatest, setRestLatest] = useState({});
-  const [chart24h, setChart24h] = useState(null);
+  const [trendRows, setTrendRows] = useState(null); // Raw trend data from API
   const [mainStationId, setMainStationId] = useState(null);
 
   // ── Real-time MQTT → Socket.IO data ──────────────────────────────────
@@ -23,27 +25,25 @@ export default function Dashboard({ refreshSignal }) {
     try {
       const rows = await apiFetch(ROUTES.latest);
       const byId = {};
-      rows.forEach(r => { byId[r.site_id] = r; });
+      rows.forEach(r => { byId[r.siteId] = r; });
       setRestLatest(byId);
     } catch (e) {
       console.warn('Could not load latest measurements:', e.message);
     }
 
     try {
-      // /api/trend lit directement measurements — données en temps réel, buckets de 30 min
       const data = await apiFetch(ROUTES.trend(6, 30));
-      setChart24h(buildTrendDatasets(data, 'temp_avg', stations, 6, 30));
+      setTrendRows(data);
     } catch {
-      // Fallback sur /api/compare si /api/trend n'est pas encore disponible sur le serveur
       try {
         const data = await apiFetch(ROUTES.compare(24));
-        setChart24h(buildCompareDatasets(data, 'temp_avg', stations, 24));
+        setTrendRows(data);
       } catch (e) {
         console.warn('Could not load chart:', e.message);
-        setChart24h({ labels: [], datasets: [] }); // affiche un graphique vide plutôt que rien
+        setTrendRows([]);
       }
     }
-  }, []);
+  }, [stations]);
 
   // Charge au montage + à chaque refreshSignal + polling toutes les 60s
   useEffect(() => {
@@ -51,6 +51,12 @@ export default function Dashboard({ refreshSignal }) {
     const timer = setInterval(load, 60_000);
     return () => clearInterval(timer);
   }, [load, refreshSignal]);
+
+  // ── Rebuild trend chart reactively when live data or trend rows change ──
+  const chart24h = useMemo(() => {
+    if (!trendRows || !stations.length) return null;
+    return buildTrendDatasets(trendRows, 'temperatureAvg', stations, 6, 30, latest);
+  }, [trendRows, stations, latest]);
 
 
   const mainId = mainStationId || (stations[0]?.id ?? 1);
@@ -79,7 +85,7 @@ export default function Dashboard({ refreshSignal }) {
             </div>
             <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
-              Statut: {sMain.received_at ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.received_at ? new Date(sMain.received_at).toLocaleTimeString() : '--:--'}
+              Statut: {sMain.receivedAt ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.receivedAt ? new Date(sMain.receivedAt).toLocaleTimeString() : '--:--'}
               {wsConnected && (
                 <span className="inline-flex items-center gap-1 ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
@@ -104,12 +110,24 @@ export default function Dashboard({ refreshSignal }) {
         </div>
 
         <div className="flex flex-wrap gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
-          {sMain.humidity != null && <StatBox label="Humidité" value={fmt(sMain.humidity, 0)} unit="%" icon="water_drop" iconColor="text-secondary" />}
-          {sMain.pressure != null && <StatBox label="Pression" value={fmt(sMain.pressure, 0)} unit="hPa" icon="compress" iconColor="text-primary" />}
-          {sMain.lux != null && <StatBox label="Luminosité" value={fmt(sMain.lux, 0)} unit="lx" icon="light_mode" iconColor="text-tertiary" />}
-          {sMain.wind_speed != null && <StatBox label="Vit. Vent" value={fmt(sMain.wind_speed, 1)} unit="km/h" icon="air" iconColor="text-secondary" />}
-          {sMain.wind_direction != null && <StatBox label="Dir. Vent" value={fmt(sMain.wind_direction, 0)} unit="°" icon="explore" iconColor="text-primary" />}
-          {sMain.rain_quantity != null && <StatBox label="Pluie" value={fmt(sMain.rain_quantity, 1)} unit="mm" icon="rainy" iconColor="text-tertiary" />}
+          {mappings
+            .filter(m => m.alias !== 'temperature' && sMain[toCamel(m.alias)] != null)
+            .map(m => {
+              const camelKey = toCamel(m.alias);
+              const meta = getSensorMeta(camelKey);
+              const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
+              return (
+                <StatBox 
+                  key={camelKey}
+                  label={meta.label} 
+                  value={fmt(sMain[camelKey], decimals)} 
+                  unit={meta.unit.trim()} 
+                  icon={meta.icon} 
+                  iconColor={meta.color} 
+                />
+              );
+            })
+          }
         </div>
       </section>
 
@@ -125,6 +143,7 @@ export default function Dashboard({ refreshSignal }) {
                 tag={tagInfo.text}
                 tagColor={tagInfo.color}
                 tagBg={tagInfo.bg}
+                mappings={mappings}
                 onClick={() => setMainStationId(id)}
               />
             </div>
@@ -204,15 +223,7 @@ function StatBox({ label, value, unit, icon, iconColor }) {
   );
 }
 
-function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
-  const metrics = [
-    { key: 'humidity',       label: 'Humidité', unit: '%',    icon: 'water_drop' },
-    { key: 'pressure',       label: 'Pression', unit: ' hPa', icon: 'compress' },
-    { key: 'wind_speed',     label: 'Vent',     unit: ' km/h', icon: 'air' },
-    { key: 'rain_quantity',  label: 'Pluie',    unit: ' mm',   icon: 'rainy' },
-    { key: 'lux',            label: 'Lux',      unit: ' lx',   icon: 'light_mode' },
-  ].filter(m => data[m.key] != null);
-
+function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings }) {
   return (
     <div
       onClick={onClick}
@@ -228,21 +239,31 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick }) {
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-        {metrics.map(m => (
-          <div key={m.key} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex items-center justify-between">
-            <span className="material-symbols-outlined text-on-surface-variant text-[12px] md:text-sm">{m.icon}</span>
-            <div className="text-right ml-2">
-              <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold leading-none">{m.label}</p>
-              <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[m.key], m.key.includes('speed') ? 1 : 0)}{m.unit}</p>
-            </div>
-          </div>
-        ))}
+        {mappings
+          .filter(m => {
+            const key = toCamel(m.alias);
+            return ['humidity', 'windSpeed', 'lux'].includes(key) && data[key] != null;
+          })
+          .map(m => {
+            const camelKey = toCamel(m.alias);
+            const meta = getSensorMeta(camelKey);
+            const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
+            return (
+              <div key={camelKey} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex items-center justify-between">
+                <span className={`material-symbols-outlined text-[12px] md:text-sm ${meta.color}`}>{meta.icon}</span>
+                <div className="text-right ml-2">
+                  <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold leading-none">{meta.label}</p>
+                  <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[camelKey], decimals)}{meta.unit}</p>
+                </div>
+              </div>
+            );
+        })}
       </div>
     </div>
   );
 }
 
-export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 30) {
+export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 30, liveLatest = null) {
   const nbMins = parseInt(hours, 10) * 60;
   const now = new Date();
   
@@ -257,21 +278,29 @@ export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 
   for (let i = steps - 1; i >= 0; i--) {
     bucketSet.push(new Date(now.getTime() - i * interval * 60000).toISOString());
   }
+  // Ajouter un label "Maintenant" pour le point live
+  bucketSet.push('now');
+
+  // Déduire la clé live à partir de la clé agrégée (ex: temperatureAvg → temperature)
+  const liveField = field.replace(/(Avg|Min|Max)$/, '');
 
   const datasets = stations.map(station => {
-    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
+    const siteRows = rows.filter(r => String(r.siteId) === String(station.id));
     const byBucket = {};
     siteRows.forEach(r => {
-      const d = new Date(r.bucket);
-      // S'assurer que le bucket correspond à l'arrondi (pour le dictionnaire)
+      const raw = r.bucket || '';
+      const d = new Date(raw.includes('Z') || raw.includes('+') ? raw : String(raw).replace(' ', 'T') + 'Z');
       const r_rem = d.getMinutes() % interval;
       d.setMinutes(d.getMinutes() - r_rem, 0, 0);
       byBucket[d.toISOString()] = r[field];
     });
 
+    // Valeur live pour le dernier point
+    const liveVal = liveLatest?.[station.id]?.[liveField] ?? null;
+
     return {
       label: station.name,
-      data: bucketSet.map(b => byBucket[b] ?? null),
+      data: bucketSet.map(b => b === 'now' ? liveVal : (byBucket[b] ?? null)),
       borderColor: station.color,
       backgroundColor: station.color + '22',
       fill: true,
@@ -280,7 +309,10 @@ export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 
       spanGaps: true,
     };
   });
-  return { labels: bucketSet, datasets };
+  return {
+    labels: bucketSet.map((b, i) => i === bucketSet.length - 1 ? 'Maintenant' : b),
+    datasets
+  };
 }
 
 export function buildCompareDatasets(rows, field, stations, hours = 24, latest = null) {
@@ -294,20 +326,25 @@ export function buildCompareDatasets(rows, field, stations, hours = 24, latest =
   }
 
   const FIELD_MAP = {
-    temp_avg: 'temperature',
-    humidity_avg: 'humidity',
-    pressure_avg: 'pressure',
-    lux_avg: 'lux',
-    wind_speed_avg: 'wind_speed',
-    rain_quantity_avg: 'rain_quantity'
+    temperatureAvg: 'temperature',
+    humidityAvg: 'humidity',
+    pressureAvg: 'pressure',
+    luxAvg: 'lux',
+    windSpeedAvg: 'windSpeed',
+    windDirectionAvg: 'windDirection',
+    rainQuantityAvg: 'rainQuantity',
+    gustSpeedAvg: 'gustSpeed',
+    gustMinAvg: 'gustMin',
+    rainRateAvg: 'rainRate'
   };
   const latestField = FIELD_MAP[field] || field;
 
   const datasets = stations.map(station => {
-    const siteRows = rows.filter(r => String(r.site_id) === String(station.id));
+    const siteRows = rows.filter(r => String(r.siteId) === String(station.id));
     const byHour = {};
     siteRows.forEach(r => {
-      const d = new Date(r.hour_start || r.hour);
+      const raw = r.hourStart || r.hour_start || r.hour || '';
+      const d = new Date(raw.includes('Z') || raw.includes('+') ? raw : String(raw).replace(' ', 'T') + 'Z');
       d.setMinutes(0,0,0,0);
       byHour[d.toISOString()] = r[field];
     });
@@ -317,7 +354,7 @@ export function buildCompareDatasets(rows, field, stations, hours = 24, latest =
       data: hourSet.map((h, idx) => {
         // Remplacer la dernière valeur par la donnée en temps réel (Maintenant)
         if (idx === hourSet.length - 1 && latest) {
-          const stLatest = latest.find(l => String(l.site_id) === String(station.id));
+          const stLatest = latest.find(l => String(l.siteId) === String(station.id));
           if (stLatest && stLatest[latestField] != null) {
             return stLatest[latestField];
           }

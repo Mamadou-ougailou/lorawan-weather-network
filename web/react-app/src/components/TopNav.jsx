@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import logo from '../assets/logo.png';
+import fablab from '../assets/fablab.png';
 
 // ── Real-time clock ──────────────────────────────────────────────
 function Clock() {
@@ -54,9 +54,9 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
           menu
         </button>
         <div className="flex items-center gap-3">
-          <img src={logo} alt="WeatherNet Logo" className="w-14 h-14 object-contain sm:hidden" />
+          <img src={fablab} alt="WeatherNet Logo" className="w-44 h-44 object-contain sm:hidden" />
           <div className="hidden sm:flex items-center gap-3">
-            <img src={logo} alt="WeatherNet Logo" className="w-14 h-14 object-contain" />
+            <img src={fablab} alt="WeatherNet Logo" className="w-44 h-44 object-contain" />
             <div className="flex flex-col leading-none">
               <span className="text-base font-bold tracking-tight text-on-surface font-headline">
                 WeatherNet PACA
