@@ -3,6 +3,7 @@ import { apiFetch, ROUTES, fmt } from '../api';
 import { useStations, useMappings } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 import { buildCompareDatasets } from './Dashboard';
+import { getSensorMeta, toCamel } from '../utils/sensorMeta';
 
 const PERIOD_OPTIONS = [
   { value: '6',   label: 'Dernières 6h' },
@@ -17,7 +18,7 @@ export default function Compare() {
   const [varKey, setVarKey] = useState('temperatureAvg');
   const [chart,  setChart]  = useState(null);
   const [varOptions, setVarOptions] = useState([
-    { value: 'temperatureAvg', label: 'Temperature' }
+    { value: 'temperatureAvg', label: 'Température' }
   ]);
 
   const mappings = useMappings();
@@ -25,10 +26,11 @@ export default function Compare() {
   useEffect(() => {
     if (mappings && mappings.length > 0) {
       const options = mappings.map(m => {
-          const camelAlias = m.alias.replace(/_([a-z])/g, (_, ch) => ch.toUpperCase());
+          const camelAlias = toCamel(m.alias);
+          const meta = getSensorMeta(camelAlias);
           return {
               value: camelAlias + 'Avg',
-              label: m.alias.charAt(0).toUpperCase() + m.alias.slice(1).replace(/_/g, ' ')
+              label: meta.label
           };
       });
       setVarOptions(options);
