@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { apiFetch, ROUTES, fmt } from '../api';
+import { useStations } from '../StationsContext';
 import useWeatherSocket from '../hooks/useWeatherSocket';
 import WeatherChart from '../components/WeatherChart';
 
 export default function Dashboard({ refreshSignal }) {
+  const stations = useStations();
   const [restLatest, setRestLatest] = useState({});
   const [chart24h, setChart24h] = useState(null);
-  const [mainStationId, setMainStationId] = useState(1);
+  const [mainStationId, setMainStationId] = useState(null);
 
   // ── Real-time MQTT → Socket.IO data ──────────────────────────────────
   const { latest: liveData, connected: wsConnected } = useWeatherSocket();
