@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Icons, Spark, StatusDot, fmt } from '../primitives.jsx';
 import { AlertsList } from '../AdminShell.jsx';
-import { fetchStations, fetchAlerts, fetchLatest, resolveAlert, deleteAlert } from '../adminApi.js';
+import { fetchStations, fetchAlerts, fetchLatest, fetchTrend, resolveAlert, deleteAlert } from '../adminApi.js';
 
 function Kpi({ label, icon, value, unit, delta, spark, color }) {
   const arrow = { up: '↑', down: '↓', warn: '!', flat: '·' }[delta?.tone] || '·';
@@ -10,7 +10,9 @@ function Kpi({ label, icon, value, unit, delta, spark, color }) {
       <div className="kpi-label">{icon}{label}</div>
       <div className="kpi-value">{value}<span className="unit">{unit}</span></div>
       {delta && <div className="kpi-delta" data-tone={delta.tone}>{arrow} {delta.text}</div>}
-      {spark && <Spark values={spark} color={color} />}
+      <div style={{ marginTop: 'auto', paddingTop: 10 }}>
+        {spark && <Spark values={spark} color={color} />}
+      </div>
     </div>
   );
 }
@@ -19,18 +21,17 @@ export default function AdminDashboard({ onPickStation }) {
   const [stations, setStations] = useState([]);
   const [alerts, setAlerts]     = useState([]);
   const [latest, setLatest]     = useState([]);
+  const [trend, setTrend]       = useState([]);
   const [loading, setLoading]   = useState(true);
 
   const load = () => {
     setLoading(true);
-    Promise.allSettled([fetchStations(), fetchAlerts(), fetchLatest()])
-      .then(([rs, ra, rl]) => {
+    Promise.allSettled([fetchStations(), fetchAlerts(), fetchLatest(), fetchTrend(24, 60)])
+      .then(([rs, ra, rl, rt]) => {
         if (rs.status === 'fulfilled') setStations(rs.value);
-        else console.error('stations:', rs.reason);
         if (ra.status === 'fulfilled') setAlerts(ra.value);
-        else console.error('alerts:', ra.reason);
         if (rl.status === 'fulfilled') setLatest(rl.value);
-        else console.error('latest:', rl.reason);
+        if (rt.status === 'fulfilled') setTrend(rt.value);
       })
       .finally(() => setLoading(false));
   };
@@ -43,9 +44,12 @@ export default function AdminDashboard({ onPickStation }) {
   const active = stations.filter(s => s.isActive);
   const activeAlerts = alerts.filter(a => !a.resolvedAt);
 
-  // Derive temps from latest
-  const temps  = latest.map(l => l.temperature).filter(v => v != null);
-  const avgTemp = temps.length ? (temps.reduce((a, b) => a + b, 0) / temps.length).toFixed(1) : '—';
+  // Derive values
+  const currentTemps = latest.map(l => l.temperature).filter(v => v != null);
+  const avgTemp = currentTemps.length ? (currentTemps.reduce((a, b) => a + b, 0) / currentTemps.length).toFixed(1) : '—';
+  
+  // Real history for sparkline
+  const trendTemps = trend.map(t => t.temperatureAvg).filter(v => v != null);
 
   if (loading) return <div className="content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' }}>Chargement…</div>;
 
@@ -65,19 +69,19 @@ export default function AdminDashboard({ onPickStation }) {
         <Kpi label="Stations actives" icon={Icons.station}
              value={active.length} unit={`/ ${stations.length}`}
              delta={{ tone: 'flat', text: `${Math.round(active.length / Math.max(stations.length, 1) * 100)}% en ligne` }}
-             color="#4ade80" />
+             color="var(--ok)" />
         <Kpi label="Température moyenne" icon={Icons.thermo}
              value={avgTemp} unit="°C"
              delta={{ tone: 'flat', text: `${latest.length} mesures actives` }}
-             spark={temps} color="#38bdf8" />
+             spark={trendTemps} color="var(--info)" />
         <Kpi label="Alertes actives" icon={Icons.alerts}
              value={activeAlerts.length} unit=""
              delta={{ tone: activeAlerts.length > 0 ? 'warn' : 'flat', text: `${alerts.filter(a => a.resolvedAt).length} résolues` }}
-             color="#f87171" />
+             color="var(--danger)" />
         <Kpi label="Mappings" icon={Icons.mapping}
              value={latest.length} unit="capteurs"
              delta={{ tone: 'flat', text: 'mesures en cours' }}
-             color="#a78bfa" />
+             color="var(--accent)" />
       </div>
 
       <div className="grid-bottom">

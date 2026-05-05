@@ -4,29 +4,60 @@
  */
 import { API_BASE } from '../api';
 
+function getAuthToken() {
+  const auth = localStorage.getItem('admin-auth');
+  return auth ? JSON.parse(auth).token : null;
+}
+
 async function _fetch(path) {
   const url = new URL(path, API_BASE).toString();
+  const token = getAuthToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(url, {
     mode: new URL(url).origin !== window.location.origin ? 'cors' : 'same-origin',
+    headers
   });
+  
+  if (res.status === 401) {
+    // Session expirée ou invalide
+    localStorage.removeItem('admin-auth');
+    window.location.reload();
+  }
+
   if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
   return res.json();
 }
 
 async function _mutate(path, method, body) {
   const url = new URL(path, API_BASE).toString();
+  const token = getAuthToken();
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(url, {
     method,
     mode: new URL(url).origin !== window.location.origin ? 'cors' : 'same-origin',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+    headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem('admin-auth');
+    window.location.reload();
+  }
+
   if (!res.ok) {
-    const msg = await res.text().catch(() => res.status);
-    throw new Error(`API ${method} ${path} → ${res.status}: ${msg}`);
+    const msg = await res.json().catch(() => ({ message: res.status }));
+    throw new Error(msg.message || msg.error || `API ${method} ${path} → ${res.status}`);
   }
   return res.json().catch(() => ({}));
 }
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+export const login            = (email, password) => _mutate('/api/auth/login', 'POST', { email, password });
+export const fetchMe          = ()                => _fetch('/api/auth/me');
 
 // ── Stations ─────────────────────────────────────────────────────────────────
 export const fetchStations    = ()          => _fetch('/api/stations');
@@ -54,6 +85,12 @@ export const fetchTrend       = (hours = 24, interval = 30) => _fetch(`/api/tren
 // ── History & compare ────────────────────────────────────────────────────────
 export const fetchHistory     = (site, hours)  => _fetch(`/api/history?site=${site}&hours=${hours}`);
 export const fetchCompare     = (hours = 24)   => _fetch(`/api/compare?hours=${hours}`);
+
+// ── Users (Admin only) ───────────────────────────────────────────────────────
+export const fetchUsers       = ()             => _fetch('/api/users');
+export const createUser       = (data)         => _mutate('/api/users', 'POST', data);
+export const updateUser       = (id, data)     => _mutate(`/api/users/${id}`, 'PATCH', data);
+export const deleteUser       = (id)           => _mutate(`/api/users/${id}`, 'DELETE');
 
 // ── Live cache ───────────────────────────────────────────────────────────────
 export const fetchLive        = ()             => _fetch('/api/live');
