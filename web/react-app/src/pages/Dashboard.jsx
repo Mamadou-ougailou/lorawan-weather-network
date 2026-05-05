@@ -64,6 +64,19 @@ export default function Dashboard({ refreshSignal }) {
   const sMain = latest[mainId] || {};
   const currentStation = stations.find(s => s.id === mainId);
 
+  // Variables communes aux stations actives (hors température déjà affichée)
+  const commonKeys = useMemo(() => {
+    const sensorAliases = mappings
+      .map(m => toCamel(m.alias))
+      .filter(k => k !== 'temperature');
+    // Ne considérer que les stations ayant des données
+    const activeStations = stations.filter(st => latest[st.id] && Object.keys(latest[st.id]).length > 0);
+    if (!activeStations.length) return sensorAliases.slice(0, 3);
+    return sensorAliases.filter(key =>
+      activeStations.every(st => latest[st.id][key] != null)
+    ).slice(0, 3);
+  }, [mappings, stations, latest]);
+
   const getSiteTag = (st) => {
     // Juste un effet de couleur semi-aléatoire basé sur l'ID pour les tags
     const colors = [
@@ -85,13 +98,8 @@ export default function Dashboard({ refreshSignal }) {
             </div>
             <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
             <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
-              Statut: {sMain.receivedAt ? 'En ligne' : 'En attente'} <span className="w-1 h-1 rounded-full bg-secondary"></span> {sMain.receivedAt ? new Date(sMain.receivedAt).toLocaleTimeString() : '--:--'}
-              {wsConnected && (
-                <span className="inline-flex items-center gap-1 ml-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
-                  Live
-                </span>
-              )}
+              <span className="material-symbols-outlined text-sm text-primary" style={{ fontSize: 16 }}>schedule</span>
+              Heure: {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
           <div className="flex items-center gap-4 md:gap-8 justify-between md:justify-end mt-4 md:mt-0 w-full md:w-auto">
@@ -111,7 +119,7 @@ export default function Dashboard({ refreshSignal }) {
 
         <div className="flex flex-wrap gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
           {mappings
-            .filter(m => m.alias !== 'temperature' && sMain[toCamel(m.alias)] != null)
+            .filter(m => m.alias !== 'temperature' && m.alias !== 'gust_min' && toCamel(m.alias) !== 'gustMin' && sMain[toCamel(m.alias)] != null)
             .map(m => {
               const camelKey = toCamel(m.alias);
               const meta = getSensorMeta(camelKey);
@@ -144,6 +152,7 @@ export default function Dashboard({ refreshSignal }) {
                 tagColor={tagInfo.color}
                 tagBg={tagInfo.bg}
                 mappings={mappings}
+                commonKeys={commonKeys}
                 onClick={() => setMainStationId(id)}
               />
             </div>
@@ -223,7 +232,7 @@ function StatBox({ label, value, unit, icon, iconColor }) {
   );
 }
 
-function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings }) {
+function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings, commonKeys }) {
   return (
     <div
       onClick={onClick}
@@ -238,14 +247,8 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings
           <div className="text-2xl md:text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
         </div>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4">
-        {mappings
-          .filter(m => {
-            const key = toCamel(m.alias);
-            return ['humidity', 'windSpeed', 'lux'].includes(key) && data[key] != null;
-          })
-          .map(m => {
-            const camelKey = toCamel(m.alias);
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        {commonKeys.map(camelKey => {
             const meta = getSensorMeta(camelKey);
             const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
             return (

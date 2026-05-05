@@ -72,21 +72,14 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
       {/* Right — clock, last update, actions */}
       <div className="flex items-center gap-3 md:gap-5">
 
-        {/* Clock + last update */}
-        <div className="hidden md:flex items-center gap-4 pr-4 border-r border-white/8">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant">
-            <span className="material-symbols-outlined text-sm text-primary" style={{ fontSize: 14 }}>
-              schedule
-            </span>
-            <Clock />
+
+        {/* Last update */}
+        {lastUpdate && (
+          <div className="hidden md:flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant/60 tracking-wide pr-4 border-r border-white/8">
+            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>cloud_sync</span>
+            MàJ {lastUpdate}
           </div>
-          {lastUpdate && (
-            <div className="flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant/60 tracking-wide">
-              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>cloud_sync</span>
-              MàJ {lastUpdate}
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex items-center gap-1">
