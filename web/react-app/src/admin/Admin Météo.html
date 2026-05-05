@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Météo</title>
+  <meta name="viewport" content="width=1440" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="data.js"></script>
+  <script type="text/babel" src="primitives.jsx"></script>
+  <script type="text/babel" src="shell.jsx"></script>
+  <script type="text/babel" src="pages.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "dark",
+      "density": "comfortable",
+      "accent": "sky",
+      "env": "DEV"
+    }/*EDITMODE-END*/;
+
+    const ACCENTS = {
+      sky:    { '--accent': '#38bdf8', '--accent-2': '#22d3ee', '--accent-soft': 'rgba(56,189,248,0.12)' },
+      violet: { '--accent': '#a78bfa', '--accent-2': '#c4b5fd', '--accent-soft': 'rgba(167,139,250,0.14)' },
+      green:  { '--accent': '#4ade80', '--accent-2': '#22d3ee', '--accent-soft': 'rgba(74,222,128,0.14)' },
+      amber:  { '--accent': '#fbbf24', '--accent-2': '#f59e0b', '--accent-soft': 'rgba(251,191,36,0.14)' },
+    };
+
+    function App() {
+      const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+      const [page, setPage] = useState('dashboard');
+      const [pickedStation, setPickedStation] = useState('STN-001');
+
+      // Apply theme + density to <html>
+      useEffect(() => {
+        document.documentElement.dataset.theme = tweaks.theme;
+        document.documentElement.dataset.density = tweaks.density;
+        const acc = ACCENTS[tweaks.accent] || ACCENTS.sky;
+        for (const [k, v] of Object.entries(acc)) {
+          document.documentElement.style.setProperty(k, v);
+        }
+      }, [tweaks.theme, tweaks.density, tweaks.accent]);
+
+      const goStation = (s) => {
+        if (s === 'alerts') { setPage('alerts'); return; }
+        if (s && s.id) setPickedStation(s.id);
+        setPage('station');
+      };
+
+      const handleNav = (id) => {
+        if (id === 'stations') setPage('stations');
+        else if (id === 'alerts') setPage('alerts');
+        else if (id === 'mappings') setPage('mappings');
+        else setPage('dashboard');
+      };
+
+      const crumbsFor = {
+        dashboard: ['Réseau', 'Vue d\'ensemble'],
+        stations:  ['Réseau', 'Stations'],
+        station:   ['Réseau', 'Stations', window.METEO_DATA.STATIONS.find(s => s.id === pickedStation)?.name || ''],
+        alerts:    ['Opérations', 'Alertes'],
+        mappings:  ['Opérations', 'Mappings capteurs'],
+      }[page] || ['—'];
+
+      const activeNav = page === 'station' ? 'stations' : page;
+      const alertCount = window.METEO_DATA.ALERTS.filter(a => a.level !== 'info').length;
+
+      return (
+        <div className="app">
+          <Sidebar
+            active={activeNav}
+            onNavigate={handleNav}
+            alertCount={alertCount}
+            env={tweaks.env}
+          />
+          <div className="main">
+            <Topbar
+              crumbs={crumbsFor}
+              theme={tweaks.theme}
+              onToggleTheme={() => setTweak('theme', tweaks.theme === 'dark' ? 'light' : 'dark')}
+            />
+            {page === 'dashboard' && <PageDashboard onPickStation={goStation} />}
+            {page === 'stations'  && <PageStations onPickStation={goStation} />}
+            {page === 'station'   && <PageStation stationId={pickedStation} onBack={() => setPage('stations')} />}
+            {page === 'alerts'    && <PageAlerts />}
+            {page === 'mappings'  && <PageMappings />}
+          </div>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection title="Thème">
+              <TweakRadio
+                value={tweaks.theme}
+                onChange={(v) => setTweak('theme', v)}
+                options={[{ value: 'dark', label: 'Sombre' }, { value: 'light', label: 'Clair' }]}
+              />
+            </TweakSection>
+            <TweakSection title="Densité">
+              <TweakRadio
+                value={tweaks.density}
+                onChange={(v) => setTweak('density', v)}
+                options={[{ value: 'comfortable', label: 'Confort' }, { value: 'compact', label: 'Compact' }]}
+              />
+            </TweakSection>
+            <TweakSection title="Couleur d'accent">
+              <TweakRadio
+                value={tweaks.accent}
+                onChange={(v) => setTweak('accent', v)}
+                options={[
+                  { value: 'sky',    label: 'Ciel' },
+                  { value: 'violet', label: 'Violet' },
+                  { value: 'green',  label: 'Vert' },
+                  { value: 'amber',  label: 'Ambre' },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection title="Environnement">
+              <TweakRadio
+                value={tweaks.env}
+                onChange={(v) => setTweak('env', v)}
+                options={[
+                  { value: 'PROD',    label: 'PROD' },
+                  { value: 'STAGING', label: 'STG' },
+                  { value: 'DEV',     label: 'DEV' },
+                ]}
+              />
+            </TweakSection>
+            <TweakSection title="Navigation rapide">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <TweakButton onClick={() => setPage('dashboard')}>→ Dashboard</TweakButton>
+                <TweakButton onClick={() => setPage('stations')}>→ Stations</TweakButton>
+                <TweakButton onClick={() => { setPickedStation('STN-001'); setPage('station'); }}>→ Détail station</TweakButton>
+                <TweakButton onClick={() => setPage('alerts')}>→ Alertes</TweakButton>
+                <TweakButton onClick={() => setPage('mappings')}>→ Mappings</TweakButton>
+              </div>
+            </TweakSection>
+          </TweaksPanel>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
