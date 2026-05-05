@@ -9,8 +9,10 @@
     "test": "NODE_OPTIONS=--experimental-vm-modules jest"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.3",
     "mqtt": "^5.15.1",
     "mysql2": "^3.11.5",
     "socket.io": "^4.8.3"
