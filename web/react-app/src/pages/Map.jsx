@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { apiFetch, ROUTES, fmt, timeAgo } from '../api';
-import { useStations } from '../StationsContext';
+import { useStations, useMappings } from '../StationsContext';
+import { getSensorMeta, toCamel } from '../utils/sensorMeta';
 
 export default function Map({ onNavigate }) {
   const stations = useStations();
@@ -74,6 +74,7 @@ function MapAutoCenter({ stations }) {
 }
 
 function SiteMarker({ station, lat, lon, onNavigate }) {
+  const mappings = useMappings();
   const [popupData, setPopupData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [hasData, setHasData] = useState(false);
@@ -109,12 +110,9 @@ function SiteMarker({ station, lat, lon, onNavigate }) {
     popupAnchor: [0, -32],
   });
 
-  const metrics = popupData ? [
-    { key: 'temperature', label: 'Temp',   unit: '°C',   icon: 'thermostat', color: 'text-orange-400' },
-    { key: 'humidity',    label: 'Hum',    unit: '%',    icon: 'water_drop', color: 'text-blue-400' },
-    { key: 'pressure',    label: 'Pression', unit: ' hPa', icon: 'compress',   color: 'text-purple-400' },
-    { key: 'wind_speed',  label: 'Vent',   unit: ' km/h', icon: 'air',        color: 'text-yellow-400' },
-  ].filter(m => popupData[m.key] != null) : [];
+  const activeMappings = popupData 
+    ? mappings.filter(m => popupData[toCamel(m.alias)] != null) 
+    : [];
 
   return (
     <Marker
@@ -140,15 +138,20 @@ function SiteMarker({ station, lat, lon, onNavigate }) {
               </div>
             ) : hasData ? (
               <div className="grid grid-cols-1 gap-2">
-                {metrics.length > 0 ? metrics.map(m => (
-                  <div key={m.key} className="flex items-center justify-between bg-white/5 p-2.5 rounded-xl border border-white/5">
-                    <div className="flex items-center gap-2">
-                      <span className={`material-symbols-outlined text-sm ${m.color}`}>{m.icon}</span>
-                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">{m.label}</span>
+                {activeMappings.length > 0 ? activeMappings.map(m => {
+                  const camelKey = toCamel(m.alias);
+                  const meta = getSensorMeta(camelKey);
+                  const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
+                  return (
+                    <div key={camelKey} className="flex items-center justify-between bg-white/5 p-2.5 rounded-xl border border-white/5">
+                      <div className="flex items-center gap-2">
+                        <span className={`material-symbols-outlined text-sm ${meta.color}`}>{meta.icon}</span>
+                        <span className="text-[10px] text-gray-400 uppercase font-bold tracking-tighter">{meta.label}</span>
+                      </div>
+                      <span className="font-bold text-white text-sm">{fmt(popupData[camelKey], decimals)}{meta.unit}</span>
                     </div>
-                    <span className="font-bold text-white text-sm">{fmt(popupData[m.key])}{m.unit}</span>
-                  </div>
-                )) : (
+                  );
+                }) : (
                   <div className="text-[10px] text-gray-500 text-center py-2 italic font-medium">Aucun capteur actif détecté</div>
                 )}
               </div>
@@ -164,7 +167,7 @@ function SiteMarker({ station, lat, lon, onNavigate }) {
               {hasData && (
                 <div className="flex justify-between items-center mb-4 opacity-50 text-[9px] uppercase tracking-widest font-extrabold px-1">
                   <span>Mis à jour</span>
-                  <span>{timeAgo(popupData.received_at)}</span>
+                  <span>{timeAgo(popupData.receivedAt)}</span>
                 </div>
               )}
               

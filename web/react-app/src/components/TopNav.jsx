@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import logo from '../assets/logo.png';
+import fablab from '../assets/fablab.png';
 
 // ── Real-time clock ──────────────────────────────────────────────
 function Clock() {
@@ -16,7 +16,7 @@ function Clock() {
 }
 
 // ── TopNav ───────────────────────────────────────────────────────
-export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
+export default function TopNav({ lastUpdate, onRefresh, setMobileOpen, onAdmin }) {
   const [isDark,   setIsDark]   = useState(true);
   const [spinning, setSpinning] = useState(false);
 
@@ -54,9 +54,9 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
           menu
         </button>
         <div className="flex items-center gap-3">
-          <img src={logo} alt="WeatherNet Logo" className="w-14 h-14 object-contain sm:hidden" />
+          <img src={fablab} alt="WeatherNet Logo" className="w-44 h-44 object-contain sm:hidden" />
           <div className="hidden sm:flex items-center gap-3">
-            <img src={logo} alt="WeatherNet Logo" className="w-14 h-14 object-contain" />
+            <img src={fablab} alt="WeatherNet Logo" className="w-44 h-44 object-contain" />
             <div className="flex flex-col leading-none">
               <span className="text-base font-bold tracking-tight text-on-surface font-headline">
                 WeatherNet PACA
@@ -72,21 +72,14 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
       {/* Right — clock, last update, actions */}
       <div className="flex items-center gap-3 md:gap-5">
 
-        {/* Clock + last update */}
-        <div className="hidden md:flex items-center gap-4 pr-4 border-r border-white/8">
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-on-surface-variant">
-            <span className="material-symbols-outlined text-sm text-primary" style={{ fontSize: 14 }}>
-              schedule
-            </span>
-            <Clock />
+
+        {/* Last update */}
+        {lastUpdate && (
+          <div className="hidden md:flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant/60 tracking-wide pr-4 border-r border-white/8">
+            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>cloud_sync</span>
+            MàJ {lastUpdate}
           </div>
-          {lastUpdate && (
-            <div className="flex items-center gap-1.5 text-[10px] font-medium text-on-surface-variant/60 tracking-wide">
-              <span className="material-symbols-outlined" style={{ fontSize: 12 }}>cloud_sync</span>
-              MàJ {lastUpdate}
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Action buttons */}
         <div className="flex items-center gap-1">
@@ -122,6 +115,21 @@ export default function TopNav({ lastUpdate, onRefresh, setMobileOpen }) {
               {isDark ? 'light_mode' : 'dark_mode'}
             </span>
           </button>
+
+          {onAdmin && (
+            <button
+              onClick={onAdmin}
+              title="Interface Admin"
+              className="
+                flex items-center justify-center w-9 h-9
+                text-on-surface-variant hover:text-primary
+                hover:bg-primary/10
+                rounded-xl transition-all duration-200
+              "
+            >
+              <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
+            </button>
+          )}
         </div>
       </div>
     </header>

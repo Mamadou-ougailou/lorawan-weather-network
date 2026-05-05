@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { apiFetch, ROUTES } from './api';
 
 const StationsContext = createContext([]);
+const MappingsContext = createContext([]);
 
 // Palette de couleurs étendue pour gérer l'ajout de nombreuses stations dynamiquement
 const PALETTE = [
@@ -12,22 +13,30 @@ const PALETTE = [
 
 export function StationsProvider({ children }) {
   const [stations, setStations] = useState([]);
+  const [mappings, setMappings] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
     
     function loadStations() {
-      apiFetch(ROUTES.stations)
-        .then(data => {
+      Promise.all([
+        apiFetch(ROUTES.stations),
+        apiFetch(ROUTES.mappings).catch(() => []) // Fallback in case of error
+      ])
+        .then(([stationsData, mappingsData]) => {
           if (cancelled) return;
-          // On injecte une couleur côté Front pour l'UI
-          const withColors = data.map((s, i) => ({
+          
+          const withColors = stationsData.map((s, i) => ({
             ...s,
             color: PALETTE[i % PALETTE.length]
           }));
           setStations(withColors);
+          
+          // Filter out inactive mappings and sort them if needed
+          const activeMappings = mappingsData.filter(m => m.isActive);
+          setMappings(activeMappings);
         })
-        .catch(e => console.error("Could not fetch stations:", e));
+        .catch(e => console.error("Could not fetch data:", e));
     }
     
     loadStations();
@@ -43,11 +52,17 @@ export function StationsProvider({ children }) {
 
   return (
     <StationsContext.Provider value={stations}>
-      {children}
+      <MappingsContext.Provider value={mappings}>
+        {children}
+      </MappingsContext.Provider>
     </StationsContext.Provider>
   );
 }
 
 export function useStations() {
   return useContext(StationsContext);
+}
+
+export function useMappings() {
+  return useContext(MappingsContext);
 }

@@ -1,5 +1,4 @@
 import React from 'react';
-import logo from '../assets/logo.png';
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: "Vue d'ensemble", icon: 'dashboard' },
@@ -30,21 +29,6 @@ export default function Sidebar({ activeSection, onNavigate, mobileOpen, setMobi
         transition-transform duration-300
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
-
-        {/* Logo */}
-        <div className="px-7 py-7 border-b border-white/5">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="WeatherNet Logo" className="w-16 h-16 object-contain" />
-            <div className="flex flex-col">
-              <h1 className="text-xl font-black tracking-tight text-on-surface uppercase font-headline leading-none">
-                WeatherNet
-              </h1>
-              <p className="font-label text-[10px] font-semibold text-on-surface-variant mt-1 tracking-[0.12em] uppercase">
-                Région PACA
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
