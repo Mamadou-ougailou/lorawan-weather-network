@@ -72,6 +72,12 @@ app.use(cors({ origin: '*' }));
 // Parse incoming JSON bodies
 app.use(express.json());
 
+// Attach io to req for controllers
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
 // ─── Routes ──────────────────────────────────────────────────────────────────
 app.use("/api", stationsRouter);     // GET, POST, PATCH, DELETE /api/stations
 app.use("/api", measurementsRouter); // GET /api/latest, /api/measurements, DELETE /api/measurements/:id

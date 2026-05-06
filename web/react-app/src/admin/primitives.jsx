@@ -42,6 +42,12 @@ export const Icons = {
   live:      <Icon d={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
   menu:      <Icon d="M4 6h16M4 12h16M4 18h16" />,
   user:      <Icon d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
+  mail:      <Icon d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6" />,
+  lock:      <Icon d="M19 11H5a2 2 0 00-2 2v7a2 2 0 002 2h14a2 2 0 002-2v-7a2 2 0 00-2-2z M7 11V7a5 5 0 0110 0v4" />,
+  eye:       <Icon d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 15a3 3 0 100-6 3 3 0 000 6z" />,
+  eyeOff:    <Icon d="M9.88 9.88l-3.29-3.29M1 12s4-8 11-8a11.84 11.84 0 014.35 1.18M21.22 15.89A12 12 0 0112 20c-7 0-11-8-11-8a11.25 11.25 0 011.61-3.14M6.3 6.3l11.41 11.41 M2 2l20 20" />,
+  logout:    <Icon d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9" />,
+  external:  <Icon d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3" />,
 };
 
 // ── Chip ─────────────────────────────────────────────────────────────────────
@@ -99,4 +105,13 @@ export const fmt = {
   press: (v) => v == null ? '—' : `${Math.round(v)}`,
   rain:  (v) => v == null ? '—' : `${Number(v).toFixed(1)}`,
   val:   (v, d = 1) => v == null ? '—' : Number(v).toFixed(d),
+  date:  (v) => v == null ? '—' : new Date(v).toLocaleDateString('fr-FR'),
+  timeAgo: (v) => {
+    if (!v) return '—';
+    const sec = Math.floor((new Date() - new Date(v)) / 1000);
+    if (sec < 60) return "à l'instant";
+    if (sec < 3600) return `il y a ${Math.floor(sec / 60)} min`;
+    if (sec < 86400) return `il y a ${Math.floor(sec / 3600)} h`;
+    return new Date(v).toLocaleDateString('fr-FR');
+  }
 };

@@ -30,11 +30,28 @@ const CRUMBS = {
 };
 
 
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
+function loadAuth() {
+  const saved = localStorage.getItem('admin-auth');
+  if (!saved) return null;
+  const parsed = JSON.parse(saved);
+  if (isTokenExpired(parsed.token)) {
+    localStorage.removeItem('admin-auth');
+    return null;
+  }
+  return parsed;
+}
+
 export default function Admin({ onBack }) {
-  const [auth, setAuth]           = useState(() => {
-    const saved = localStorage.getItem('admin-auth');
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [auth, setAuth]           = useState(loadAuth);
   const [page, setPage]           = useState('dashboard');
   const [alertCount, setAlertCount] = useState(0);
   const [theme, setTheme]         = useState(() => localStorage.getItem('admin-theme') || 'light');
@@ -72,6 +89,17 @@ export default function Admin({ onBack }) {
     localStorage.removeItem('admin-auth');
   };
 
+  // Vérifie l'expiration du token toutes les 60s pendant la session
+  useEffect(() => {
+    if (!auth) return;
+    const id = setInterval(() => {
+      if (isTokenExpired(auth.token)) {
+        handleLogout();
+      }
+    }, 60_000);
+    return () => clearInterval(id);
+  }, [auth]);
+
   if (!auth) {
     return (
       <div className="admin-wrap" data-theme={theme}>
@@ -92,16 +120,17 @@ export default function Admin({ onBack }) {
             onToggleTheme={toggleTheme} 
             onMenuClick={() => setMobileMenuOpen(true)}
             onLogout={handleLogout}
+            user={auth.user}
           />
           <div className="content-scroll">
-            {page === 'dashboard' && <AdminDashboard onPickStation={(s) => s === 'alerts' ? setPage('alerts') : setPage('stations')} />}
-            {page === 'stations'  && <AdminStations />}
-            {page === 'live'      && <AdminLive />}
-            {page === 'measures'  && <AdminMeasures />}
-            {page === 'history'   && <AdminHistory />}
-            {page === 'alerts'    && <AdminAlerts />}
-            {page === 'mappings'  && <AdminMappings />}
-            {page === 'users'     && <AdminUsers />}
+            {page === 'dashboard' && <AdminDashboard user={auth.user} onPickStation={(s) => s === 'alerts' ? setPage('alerts') : setPage('stations')} />}
+            {page === 'stations'  && <AdminStations  user={auth.user} />}
+            {page === 'live'      && <AdminLive      user={auth.user} />}
+            {page === 'measures'  && <AdminMeasures  user={auth.user} />}
+            {page === 'history'   && <AdminHistory   user={auth.user} />}
+            {page === 'alerts'    && <AdminAlerts    user={auth.user} />}
+            {page === 'mappings'  && <AdminMappings  user={auth.user} />}
+            {page === 'users'     && <AdminUsers     currentUser={auth.user} />}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useCallback, useMemo } from 'react';
+import { useState } from 'react';
 import { apiFetch, ROUTES, fmt } from '../api';
-import { useStations, useMappings } from '../StationsContext';
-import useWeatherSocket from '../hooks/useWeatherSocket';
+import { useStations, useMappings, useLiveData, useWsConnected } from '../StationsContext';
 import WeatherChart from '../components/WeatherChart';
 import { getSensorMeta, toCamel } from '../utils/sensorMeta';
 
@@ -9,19 +9,24 @@ export default function Dashboard({ refreshSignal }) {
   const stations = useStations();
   const mappings = useMappings();
   const [restLatest, setRestLatest] = useState({});
-  const [trendRows, setTrendRows] = useState(null); // Raw trend data from API
+  const [trendRows, setTrendRows]   = useState(null);
   const [mainStationId, setMainStationId] = useState(null);
 
-  // ── Real-time MQTT → Socket.IO data ──────────────────────────────────
-  const { latest: liveData, connected: wsConnected } = useWeatherSocket();
+  // Données socket temps réel (partagées via context)
+  const liveData    = useLiveData();
+  const wsConnected = useWsConnected();
 
-  // Merge: live data takes precedence over REST data
-  const latest = { ...restLatest };
-  for (const [siteId, data] of Object.entries(liveData)) {
-    latest[siteId] = { ...latest[siteId], ...data };
-  }
+  // Socket prend le dessus sur les données REST initiales
+  const latest = useMemo(() => {
+    const merged = { ...restLatest };
+    for (const [siteId, data] of Object.entries(liveData)) {
+      merged[siteId] = { ...merged[siteId], ...data };
+    }
+    return merged;
+  }, [restLatest, liveData]);
 
   const load = useCallback(async () => {
+    // Charge les dernières valeurs REST une seule fois (données initiales)
     try {
       const rows = await apiFetch(ROUTES.latest);
       const byId = {};
@@ -31,6 +36,7 @@ export default function Dashboard({ refreshSignal }) {
       console.warn('Could not load latest measurements:', e.message);
     }
 
+    // Charge le chart historique
     try {
       const data = await apiFetch(ROUTES.trend(6, 30));
       setTrendRows(data);
@@ -45,11 +51,9 @@ export default function Dashboard({ refreshSignal }) {
     }
   }, [stations]);
 
-  // Charge au montage + à chaque refreshSignal + polling toutes les 60s
+  // Chargement initial uniquement — les mises à jour arrivent via socket
   useEffect(() => {
     load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
   }, [load, refreshSignal]);
 
   // ── Rebuild trend chart reactively when live data or trend rows change ──
@@ -118,20 +122,22 @@ export default function Dashboard({ refreshSignal }) {
         </div>
 
         <div className="flex flex-wrap gap-2 md:gap-4 mt-6 md:mt-12 relative z-10">
-          {mappings
-            .filter(m => m.alias !== 'temperature' && m.alias !== 'gust_min' && toCamel(m.alias) !== 'gustMin' && sMain[toCamel(m.alias)] != null)
-            .map(m => {
+          {[...new Map(
+            mappings
+              .filter(m => m.alias !== 'temperature' && m.alias !== 'gust_min' && toCamel(m.alias) !== 'gustMin' && sMain[toCamel(m.alias)] != null)
+              .map(m => [toCamel(m.alias), m])
+          ).values()].map(m => {
               const camelKey = toCamel(m.alias);
               const meta = getSensorMeta(camelKey);
               const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
               return (
-                <StatBox 
+                <StatBox
                   key={camelKey}
-                  label={meta.label} 
-                  value={fmt(sMain[camelKey], decimals)} 
-                  unit={meta.unit.trim()} 
-                  icon={meta.icon} 
-                  iconColor={meta.color} 
+                  label={meta.label}
+                  value={fmt(sMain[camelKey], decimals)}
+                  unit={meta.unit.trim()}
+                  icon={meta.icon}
+                  iconColor={meta.color}
                 />
               );
             })
@@ -139,12 +145,13 @@ export default function Dashboard({ refreshSignal }) {
         </div>
       </section>
 
-      <section className="flex lg:grid lg:grid-cols-2 gap-4 md:gap-8 overflow-x-auto lg:overflow-x-visible pb-4 lg:pb-0 scrollbar-hide -mx-4 px-4 lg:mx-0 lg:px-0">
+      {otherIds.length > 0 && (
+        <section className="flex flex-wrap gap-4 md:gap-8 pb-4 lg:pb-0">
         {otherIds.map(id => {
           const st = stations.find(s => s.id === id);
           const tagInfo = getSiteTag(st);
           return (
-            <div key={id} className="min-w-[280px] md:min-w-0 flex-shrink-0 lg:flex-shrink">
+            <div key={id} className="min-w-[280px] md:min-w-0 flex-1">
               <SecondaryCard
                 siteName={st && st.city ? st.city : `Station ${id}`}
                 data={latest[id] || {}}
@@ -159,6 +166,7 @@ export default function Dashboard({ refreshSignal }) {
           );
         })}
       </section>
+      )}
 
       {chart24h && (
         <section className="bg-surface-container-low rounded-xl p-8 border border-outline-variant">
@@ -225,7 +233,7 @@ function StatBox({ label, value, unit, icon, iconColor }) {
     <div className="bg-surface-container-highest/50 backdrop-blur-md p-4 md:p-6 rounded-xl border border-outline-variant flex-1 min-w-[140px] md:min-w-[180px]">
       <p className="text-on-surface-variant text-[9px] md:text-[10px] font-bold uppercase tracking-widest mb-2 md:mb-4">{label}</p>
       <div className="flex items-end justify-between">
-        <span className="text-xl md:text-2xl font-headline font-bold">{value}<span className="text-xs md:text-sm font-normal text-on-surface-variant ml-1">{unit}</span></span>
+        <span className="text-xl md:text-2xl font-headline font-bold">{value}<span className="text-xs md:text-sm font-normal text-on-surface-variant">{unit}</span></span>
         <span className={`material-symbols-outlined text-lg md:text-xl ${iconColor}`}>{icon}</span>
       </div>
     </div>
@@ -247,15 +255,15 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings
           <div className="text-2xl md:text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
-        {commonKeys.map(camelKey => {
+      <div className="flex flex-wrap gap-2 md:gap-4 w-full">
+        {commonKeys.filter(k => data[k] != null).map(camelKey => {
             const meta = getSensorMeta(camelKey);
             const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
             return (
-              <div key={camelKey} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex items-center justify-between">
-                <span className={`material-symbols-outlined text-[12px] md:text-sm ${meta.color}`}>{meta.icon}</span>
-                <div className="text-right ml-2">
-                  <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold leading-none">{meta.label}</p>
+              <div key={camelKey} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex flex-col items-center justify-center text-center flex-1 min-w-[80px]">
+                <span className={`material-symbols-outlined text-[12px] md:text-sm ${meta.color} mb-1`}>{meta.icon}</span>
+                <div className="leading-tight">
+                  <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold">{meta.label}</p>
                   <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[camelKey], decimals)}{meta.unit}</p>
                 </div>
               </div>
