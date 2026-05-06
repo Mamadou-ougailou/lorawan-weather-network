@@ -9,7 +9,7 @@
 
 import mqtt from "mqtt";
 import config from "./config.js";
-import { getCachedMappings } from "./components/mappings/mappings.service.js";
+import { toMeasurementDTO } from "./dto.js";
 
 // Cache for the latest live payloads (for the /api/live endpoint)
 export const liveCache = {};
@@ -64,22 +64,12 @@ function parsePayload(raw, siteId) {
         const rx = raw.uplink_message.rx_metadata?.[0] ?? {};
         readings = extractReadings(decoded.sensors ?? decoded);
         meta = {
-            site_id:     decoded.site_id ?? siteId,
-            received_at: new Date().toISOString(),
+            siteId:     siteId,
+            receivedAt: new Date().toISOString(),
             dev_eui:     raw.end_device_ids?.dev_eui ?? null,
+            f_cnt:       raw.uplink_message.f_cnt ?? null,
             rssi:        rx.rssi ?? null,
             snr:         rx.snr ?? null,
-        };
-    }
-    // Flat format
-    else if (raw.site_id != null) {
-        readings = extractReadings(raw);
-        meta = {
-            site_id:     raw.site_id,
-            received_at: new Date().toISOString(),
-            dev_eui:     raw.dev_eui ?? null,
-            rssi:        raw.rssi ?? null,
-            snr:         raw.snr ?? null,
         };
     }
     else {
@@ -88,7 +78,7 @@ function parsePayload(raw, siteId) {
 
     if (Object.keys(readings).length === 0) return null;
 
-    return { ...meta, ...readings };
+    return { ...meta, readings };
 }
 
 /**
@@ -107,21 +97,38 @@ export function startMqttBridge(io) {
     const protocol = (port === 443) ? (tls ? "wss" : "ws") : (tls ? "mqtts" : "mqtt");
     const brokerUrl = `${protocol}://${host}:${port}`;
 
-    console.log(`[MQTT] Connecting to ${brokerUrl} as "${clientId}"…`);
+    // Add a random suffix to avoid "Client ID already in use" if a previous connection is hanging
+    const finalClientId = `${clientId}-${Math.random().toString(16).slice(2, 8)}`;
+
+    console.log(`[MQTT] Connecting to ${brokerUrl} as "${finalClientId}"…`);
 
     const client = mqtt.connect(brokerUrl, {
-        clientId,
+        clientId: finalClientId,
         username,
         password,
         rejectUnauthorized: false,
         keepalive: 60,
         reconnectPeriod: 5_000,
+        connectTimeout: 30_000,
+        clean: true
+    });
+
+    client.on("error", (err) => {
+        console.error("[MQTT] Error:", err.message);
+    });
+
+    client.on("close", () => {
+        console.log("[MQTT] Connection closed");
+    });
+
+    client.on("offline", () => {
+        console.warn("[MQTT] Offline");
     });
 
     client.on("connect", () => {
         console.log("[MQTT] ✓ Connected to broker");
         const topicList = [...topicMap.keys()];
-        client.subscribe(topicList, { qos: 0 }, (err) => {
+        client.subscribe(topicList, { qos: 1 }, (err) => {
             if (err) {
                 console.error("[MQTT] Subscribe error:", err.message);
             } else {
@@ -146,26 +153,12 @@ export function startMqttBridge(io) {
                 return;
             }
 
-            // Apply dynamic alias mappings (same translations as the REST API)
-            // so the frontend gets consistent keys (e.g. "temperature" not "temp1")
-            const fields = getCachedMappings();
-            const aliasMap = Object.fromEntries(fields.map(f => [f.raw, f.alias]));
-            const activeRawKeys = new Set(fields.map(f => f.raw));
-            const aliased = {};
-            for (const [key, val] of Object.entries(parsed)) {
-                if (META_KEYS.has(key)) {
-                    // Keep metadata keys as-is (site_id, rssi, etc.)
-                    aliased[key] = val;
-                } else if (aliasMap[key]) {
-                    // Translate active sensor keys
-                    aliased[aliasMap[key]] = val;
-                }
-                // Inactive/unmapped sensor keys are hidden (consistent with REST API)
-            }
+            // Apply the exact same DTO transformation as the REST API
+            const aliased = toMeasurementDTO(parsed);
 
-            console.log(`[MQTT] → site ${aliased.site_id}:`, JSON.stringify(aliased).slice(0, 120));
+            console.log(`[MQTT] → site ${aliased.siteId}:`, JSON.stringify(aliased).slice(0, 120));
 
-            liveCache[aliased.site_id] = aliased;
+            liveCache[aliased.siteId] = aliased;
             io.emit("weather:live", aliased);
 
         } catch (err) {

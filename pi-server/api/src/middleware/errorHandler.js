@@ -33,15 +33,14 @@ export function notFound(req, res) {
  * Global error handler – registered AFTER all routes and the 404 handler.
  * Express identifies this as an error handler because it has four parameters.
  */
-// eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {
     const statusCode = err.statusCode || 500;
     const status = err.status || 'error';
     
-    // Only log internal server errors (500), hide client errors (400-404) from logs
     if (statusCode === 500) {
         console.error(`[ERROR] ${req.method} ${req.path}`, err);
     }
+       
 
     const message = err.isOperational 
         ? err.message 

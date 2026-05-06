@@ -4,8 +4,8 @@ import { requireAuth, requireRole } from "../auth/auth.middleware.js";
 
 const router = Router();
 
-// Toutes les routes utilisateurs sont réservées aux admins
-router.use(requireAuth, requireRole("admin"));
+// Appliquer la protection spécifiquement sur le chemin /users
+router.use("/users", requireAuth, requireRole("admin"));
 
 router.route("/users")
     .get(usersController.getAllUsers)

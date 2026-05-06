@@ -181,6 +181,56 @@ curl -X DELETE http://localhost:3000/api/mappings/5
 
 ---
 
+## 🔐 Authentification & Utilisateurs
+
+Toutes les routes de modification (POST, PATCH, DELETE) de l'API nécessitent d'être authentifié en tant qu'administrateur. N'oubliez pas de passer le token JWT dans le header `Authorization: Bearer <votre_token>`.
+
+### Connexion (Login)
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@weather.local", "password": "admin123"}'
+```
+
+### Lister les utilisateurs (Admin)
+
+Protégé : seul un compte "admin" y a accès.
+
+```bash
+curl http://localhost:3000/api/users \
+  -H "Authorization: Bearer <votre_token>"
+```
+
+### Créer un utilisateur (Admin)
+
+```bash
+curl -X POST http://localhost:3000/api/users \
+  -H "Authorization: Bearer <votre_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "nouveau@weather.local", "password": "mot_de_passe", "role": "viewer"}'
+```
+
+### Modifier le rôle ou mot de passe d'un utilisateur (Admin)
+
+Mise à jour partielle (envoyer uniquement le `role` ou le `password`).
+
+```bash
+curl -X PATCH http://localhost:3000/api/users/2 \
+  -H "Authorization: Bearer <votre_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"role": "admin"}'
+```
+
+### Supprimer un utilisateur (Admin)
+
+```bash
+curl -X DELETE http://localhost:3000/api/users/2 \
+  -H "Authorization: Bearer <votre_token>"
+```
+
+---
+
 ## 🔴 Données en direct
 
 ### Cache temps réel (dernière trame MQTT)
@@ -231,5 +281,11 @@ socket.on("weather:live", (data) => {
 | `POST`   | `/api/mappings`           | Créer un mapping                     |
 | `PATCH`  | `/api/mappings/:id`       | Modifier un mapping (partiel)        |
 | `DELETE` | `/api/mappings/:id`       | Supprimer un mapping (soft)          |
+| `POST`   | `/api/auth/login`         | Connexion (récupérer le token)       |
+| `GET`    | `/api/auth/me`            | Infos de l'utilisateur connecté      |
+| `GET`    | `/api/users`              | Lister les utilisateurs (admin)      |
+| `POST`   | `/api/users`              | Créer un utilisateur (admin)         |
+| `PATCH`  | `/api/users/:id`          | Modifier un utilisateur (admin)      |
+| `DELETE` | `/api/users/:id`          | Supprimer un utilisateur (admin)     |
 | `GET`    | `/api/live`               | Cache temps réel (dernière trame)    |
 | `WS`     | `weather:live`            | Push temps réel via Socket.IO        |
