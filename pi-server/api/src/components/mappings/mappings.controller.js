@@ -7,15 +7,18 @@ export const getAllMappings = async (_req, res) => {
 
 export const createMapping = async (req, res) => {
     const id = await mappingsService.createMapping(req.body);
+    req.io.emit("mappings_updated");
     res.status(201).json({ success: true, id });
 };
 
 export const updateMapping = async (req, res) => {
     await mappingsService.updateMapping(req.params.id, req.body);
+    req.io.emit("mappings_updated");
     res.json({ success: true });
 };
 
 export const deleteMapping = async (req, res) => {
     await mappingsService.deleteMapping(req.params.id);
+    req.io.emit("mappings_updated");
     res.json({ success: true });
 };

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icons } from '../primitives.jsx';
 import { fetchStations, fetchMeasurements, deleteMeasurement } from '../adminApi.js';
 
-export default function AdminMeasures() {
+export default function AdminMeasures({ user }) {
   const [stations, setStations]     = useState([]);
   const [measures, setMeasures]     = useState([]);
   const [loading, setLoading]       = useState(false);
@@ -78,7 +78,7 @@ export default function AdminMeasures() {
                 <th>#</th>
                 <th>Reçue le</th>
                 {sensorKeys.map(k => <th key={k} className="num">{k}</th>)}
-                <th />
+                {user?.role === 'admin' && <th />}
               </tr></thead>
               <tbody>
                 {measures.map(m => (
@@ -92,13 +92,15 @@ export default function AdminMeasures() {
                         {m[k] != null ? (typeof m[k] === 'number' ? m[k].toFixed(2) : m[k]) : '—'}
                       </td>
                     ))}
-                    <td>
-                      <div className="row-actions">
-                        <button className="icon-btn" title="Supprimer" onClick={() => handleDelete(m.id)}>
-                          {Icons.trash}
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                      <td>
+                        <div className="row-actions">
+                          <button className="icon-btn" title="Supprimer" onClick={() => handleDelete(m.id)}>
+                            {Icons.trash}
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

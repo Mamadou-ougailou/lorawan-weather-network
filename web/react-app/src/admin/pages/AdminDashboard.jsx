@@ -17,7 +17,7 @@ function Kpi({ label, icon, value, unit, delta, spark, color }) {
   );
 }
 
-export default function AdminDashboard({ onPickStation }) {
+export default function AdminDashboard({ onPickStation, user }) {
   const [stations, setStations] = useState([]);
   const [alerts, setAlerts]     = useState([]);
   const [latest, setLatest]     = useState([]);
@@ -42,7 +42,27 @@ export default function AdminDashboard({ onPickStation }) {
   const handleDelete  = (id) => deleteAlert(id).then(load).catch(console.error);
 
   const active = stations.filter(s => s.isActive);
-  const activeAlerts = alerts.filter(a => !a.resolvedAt);
+  const activeAlertsFromDB = alerts.filter(a => !a.resolvedAt);
+
+  // Injection d'alertes virtuelles pour les stations inactives (fallback frontend)
+  const staleStations = stations.filter(s => 
+    s.isActive && 
+    s.lastSeenAt && 
+    (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000) &&
+    !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
+  );
+
+  const virtualAlerts = staleStations.map(s => ({
+    id: `v-${s.id}`,
+    siteId: s.id,
+    siteName: s.name,
+    metric: 'offline',
+    message: `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`,
+    triggeredAt: s.lastSeenAt,
+    isVirtual: true
+  }));
+
+  const activeAlerts = [...activeAlertsFromDB, ...virtualAlerts];
 
   // Derive values
   const currentTemps = latest.map(l => l.temperature).filter(v => v != null);
@@ -114,12 +134,21 @@ export default function AdminDashboard({ onPickStation }) {
               <th className="num">Humidité</th>
             </tr></thead>
             <tbody>
-              {stations.slice(0, 6).map(s => {
-                const m = latest.find(l => l.siteId === s.id);
-                return (
-                  <tr key={s.id} onClick={() => onPickStation && onPickStation(s)} style={{ cursor: 'pointer' }}>
-                    <td><StatusDot tone={s.isActive ? 'ok' : 'off'} /></td>
-                    <td><div style={{ fontWeight: 500 }}>{s.name}</div></td>
+                  {stations.slice(0, 6).map(s => {
+                    const m = latest.find(l => l.siteId === s.id);
+                    const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
+                    const isStale = s.lastSeenAt && (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000);
+                    const tone = !s.isActive ? 'off' : ((isOfflineAlert || isStale) ? 'danger' : 'ok');
+                    
+                    return (
+                      <tr key={s.id} onClick={() => onPickStation && onPickStation(s)} style={{ cursor: 'pointer' }}>
+                        <td><StatusDot tone={tone} /></td>
+                        <td>
+                          <div style={{ fontWeight: 600 }}>{s.name}</div>
+                          <div style={{ fontSize: 9, color: 'var(--text-3)' }}>
+                            {s.lastSeenAt ? `Vu ${fmt.timeAgo(s.lastSeenAt)}` : 'Jamais vu'}
+                          </div>
+                        </td>
                     <td style={{ color: 'var(--text-1)' }}>{s.city || '—'}</td>
                     <td className="num">{fmt.temp(m?.temperature)}</td>
                     <td className="num">{fmt.pct(m?.humidity)}</td>

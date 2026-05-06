@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Icons, Chip } from '../primitives.jsx';
 import { fetchMappings, createMapping, updateMapping, deleteMapping } from '../adminApi.js';
 
-export default function AdminMappings() {
+export default function AdminMappings({ user }) {
   const [mappings, setMappings]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [showForm, setShowForm]   = useState(false);
@@ -47,9 +47,11 @@ export default function AdminMappings() {
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={load}>{Icons.refresh}Actualiser</button>
-          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
-            {Icons.plus}Nouveau mapping
-          </button>
+          {user?.role === 'admin' && (
+            <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true); }}>
+              {Icons.plus}Nouveau mapping
+            </button>
+          )}
         </div>
       </div>
 
@@ -98,14 +100,16 @@ export default function AdminMappings() {
                     </Chip>
                   </td>
                   <td>
-                    <div className="row-actions">
-                      <button className="icon-btn" title="Modifier" onClick={() => { setEditing(m); setShowForm(true); }}>
-                        {Icons.edit}
-                      </button>
-                      <button className="icon-btn" title="Désactiver" onClick={() => handleDelete(m.id)}>
-                        {Icons.trash}
-                      </button>
-                    </div>
+                    {user?.role === 'admin' && (
+                      <div className="row-actions">
+                        <button className="icon-btn" title="Modifier" onClick={() => { setEditing(m); setShowForm(true); }}>
+                          {Icons.edit}
+                        </button>
+                        <button className="icon-btn" title="Désactiver" onClick={() => handleDelete(m.id)}>
+                          {Icons.trash}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

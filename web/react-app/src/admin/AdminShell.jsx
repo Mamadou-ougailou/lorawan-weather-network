@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icons, Chip } from './primitives.jsx';
+import fablab from '../assets/fablab.png';
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 export function AdminSidebar({ active, onNavigate, alertCount, isOpen, setOpen, user }) {
@@ -30,7 +31,9 @@ export function AdminSidebar({ active, onNavigate, alertCount, isOpen, setOpen, 
       <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={() => setOpen(false)} />
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-brand">
-          <div className="brand-mark">A</div>
+          <div className="brand-mark" style={{ background: 'none', boxShadow: 'none', width: '40px', height: '40px' }}>
+            <img src={fablab} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <div className="brand-name">Admin · Réseau</div>
           <button className="mobile-close" onClick={() => setOpen(false)}>{Icons.close}</button>
         </div>
@@ -46,35 +49,130 @@ export function AdminSidebar({ active, onNavigate, alertCount, isOpen, setOpen, 
 }
 
 // ── Topbar ────────────────────────────────────────────────────────────────────
-export function AdminTopbar({ crumbs, onBack, theme, onToggleTheme, onMenuClick, onLogout }) {
+export function AdminTopbar({ crumbs, onBack, theme, onToggleTheme, onMenuClick, onLogout, user }) {
+  const getInitials = (email) => {
+    if (!email) return '??';
+    return email.split('@')[0].substring(0, 2).toUpperCase();
+  };
+
   return (
     <header className="topbar">
-      <button className="mobile-menu-btn" onClick={onMenuClick}>{Icons.menu}</button>
-      
-      <div className="crumbs">
-        {crumbs.map((c, i) => (
-          <React.Fragment key={i}>
-            {i > 0 ? <span className="sep">/</span> : null}
-            <span className={i === crumbs.length - 1 ? 'here' : ''}>{c}</span>
-          </React.Fragment>
-        ))}
+      <div className="topbar-left">
+        <button className="mobile-menu-btn" onClick={onMenuClick}>{Icons.menu}</button>
+        
+        <div className="crumbs">
+          {crumbs.map((c, i) => (
+            <React.Fragment key={i}>
+              {i > 0 ? <span className="sep">/</span> : null}
+              <span className={i === crumbs.length - 1 ? 'here' : ''}>{c}</span>
+            </React.Fragment>
+          ))}
+        </div>
       </div>
       
-      <div className="topbar-actions" style={{ marginLeft: 'auto' }}>
-        <span className="live-pill hidden-xs"><span className="pulse" />ADMIN</span>
-        
-        <button className="icon-btn" onClick={onToggleTheme} title="Changer le thème">
+      <div className="topbar-actions">
+        <button className="top-btn" onClick={onToggleTheme} title="Changer le thème">
           {theme === 'dark' ? Icons.sun : Icons.moon}
         </button>
 
-        <button className="icon-btn" onClick={onLogout} title="Déconnexion">
-          ❌
+        <button className="top-btn logout-btn" onClick={onLogout} title="Déconnexion">
+          {Icons.logout}
         </button>
 
-        <button className="btn btn-ghost" onClick={onBack} style={{ gap: 6 }}>
-          {Icons.back} <span className="hidden-xs">Retour au site</span>
+        <div className="v-sep" />
+
+        <div className="topbar-user">
+          <div className="avatar" style={{ 
+            width: 32, height: 32, fontSize: 11,
+            background: user?.role === 'admin' ? 'linear-gradient(135deg, var(--danger) 0%, var(--accent) 100%)' : 'linear-gradient(135deg, var(--ok) 0%, var(--accent) 100%)'
+          }}>
+            {getInitials(user?.email)}
+          </div>
+        </div>
+
+        <button className="btn btn-primary topbar-back" onClick={onBack}>
+          {Icons.external}
+          <span className="hidden-xs">Retour au site</span>
         </button>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .topbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 24px;
+          height: 64px;
+          background: var(--bg-1);
+          border-bottom: 1px solid var(--line);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 16px; }
+        .topbar-actions { display: flex; align-items: center; gap: 12px; }
+        
+        .admin-status {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 10px;
+          background: var(--danger-soft);
+          color: var(--danger);
+          border-radius: 20px;
+          border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+        .admin-status .pulse {
+          width: 6px;
+          height: 6px;
+          background: var(--danger);
+          border-radius: 50%;
+          box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+          animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+          70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        
+        .v-sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
+        
+        .top-btn {
+          width: 36px;
+          height: 36px;
+          display: grid;
+          place-items: center;
+          border-radius: 10px;
+          border: none;
+          background: transparent;
+          color: var(--text-2);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .top-btn:hover { background: var(--bg-3); color: var(--text-0); }
+        .logout-btn:hover { background: var(--danger-soft); color: var(--danger); }
+        
+        .topbar-user { display: flex; align-items: center; gap: 12px; padding: 4px; border-radius: 12px; transition: background 0.2s; }
+        .user-info { display: flex; flexDirection: column; align-items: flex-end; line-height: 1.2; }
+        .user-email { font-size: 12px; font-weight: 600; color: var(--text-0); }
+        .user-role { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.02em; }
+        
+        .topbar-back {
+          padding: 8px 16px;
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 13px;
+          gap: 8px;
+          box-shadow: 0 4px 12px var(--accent-glow);
+        }
+
+        .crumbs { font-size: 13px; font-weight: 500; color: var(--text-3); }
+        .crumbs .sep { margin: 0 8px; opacity: 0.3; }
+        .crumbs .here { color: var(--text-0); font-weight: 700; }
+      `}} />
     </header>
   );
 }

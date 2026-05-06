@@ -7,9 +7,10 @@ import {
 } from '../adminApi.js';
 
 // ── Station list ──────────────────────────────────────────────────────────────
-export default function AdminStations() {
+export default function AdminStations({ user }) {
   const [stations, setStations]   = useState([]);
   const [latest, setLatest]       = useState([]);
+  const [alerts, setAlerts]       = useState([]);
   const [loading, setLoading]     = useState(true);
   const [filter, setFilter]       = useState('');
   const [picked, setPicked]       = useState(null);   // station object
@@ -25,6 +26,9 @@ export default function AdminStations() {
     fetchLatest()
       .then(setLatest)
       .catch(e => { console.error('latest:', e); });
+    fetchAlerts()
+      .then(setAlerts)
+      .catch(e => { console.error('alerts:', e); });
   };
 
   useEffect(() => { load(); }, []);
@@ -40,6 +44,7 @@ export default function AdminStations() {
       latest={latest.find(l => l.siteId === picked.id)}
       onBack={() => setPicked(null)}
       onRefresh={load}
+      user={user}
     />
   );
 
@@ -56,7 +61,9 @@ export default function AdminStations() {
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={load}>{Icons.refresh}Actualiser</button>
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>{Icons.plus}Ajouter</button>
+          {user?.role === 'admin' && (
+            <button className="btn btn-primary" onClick={() => setShowForm(true)}>{Icons.plus}Ajouter</button>
+          )}
         </div>
       </div>
 
@@ -88,17 +95,28 @@ export default function AdminStations() {
               <th className="num">Alt.</th>
               <th className="num">Temp</th>
               <th className="num">Humidité</th>
-              <th />
+              {user?.role === 'admin' && <th />}
             </tr></thead>
             <tbody>
               {rows.map(s => {
                 const m = latest.find(l => l.siteId === s.id);
+                const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
+                
+                // Fallback: si pas de données depuis 45 min, on considère comme offline même sans alerte
+                const lastContact = s.lastSeenAt ? new Date(s.lastSeenAt) : null;
+                const isStale = lastContact && (new Date() - lastContact > 45 * 60 * 1000);
+                
+                const isOffline = isOfflineAlert || isStale;
+                const tone = !s.isActive ? 'off' : (isOffline ? 'danger' : 'ok');
+                
                 return (
                   <tr key={s.id} onClick={() => setPicked(s)} style={{ cursor: 'pointer' }}>
-                    <td><StatusDot tone={s.isActive ? 'ok' : 'off'} /></td>
+                    <td><StatusDot tone={tone} /></td>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{s.name}</div>
-                      <div className="mono" style={{ fontSize: 11, color: 'var(--text-3)' }}>#{s.id}</div>
+                      <div style={{ fontWeight: 600 }}>{s.name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text-3)', marginTop: 2 }}>
+                        {s.lastSeenAt ? `Vu ${fmt.timeAgo(s.lastSeenAt)}` : 'Jamais vu'}
+                      </div>
                     </td>
                     <td>{s.city || '—'}</td>
                     <td className="num">{s.latitude != null ? Number(s.latitude).toFixed(4) : '—'}</td>
@@ -106,13 +124,22 @@ export default function AdminStations() {
                     <td className="num">{s.altitudeM != null ? `${s.altitudeM} m` : '—'}</td>
                     <td className="num">{fmt.temp(m?.temperature)}</td>
                     <td className="num">{fmt.pct(m?.humidity)}</td>
-                    <td onClick={e => e.stopPropagation()}>
-                      <div className="row-actions">
-                        <button className="icon-btn" title="Supprimer" onClick={() => handleDelete(s.id)}>
-                          {Icons.trash}
-                        </button>
-                      </div>
-                    </td>
+                    {user?.role === 'admin' && (
+                      <td onClick={e => e.stopPropagation()}>
+                        <div className="row-actions">
+                          {!s.isActive ? (
+                            <button className="icon-btn" title="Réactiver" style={{ color: 'var(--ok)' }}
+                              onClick={() => updateStation(s.id, { isActive: true }).then(load).catch(alert)}>
+                              {Icons.check}
+                            </button>
+                          ) : (
+                            <button className="icon-btn" title="Désactiver" onClick={() => handleDelete(s.id)}>
+                              {Icons.trash}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -126,7 +153,7 @@ export default function AdminStations() {
 }
 
 // ── Station detail ─────────────────────────────────────────────────────────────
-function StationDetail({ station: s, latest: m, onBack, onRefresh }) {
+function StationDetail({ station: s, latest: m, onBack, onRefresh, user }) {
   const [tab, setTab]         = useState('overview');
   const [history, setHistory] = useState([]);
   const [alerts, setAlerts]   = useState([]);
@@ -171,7 +198,9 @@ function StationDetail({ station: s, latest: m, onBack, onRefresh }) {
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={onBack}>{Icons.back}Retour</button>
-          <button className="btn" onClick={() => setEditing(true)}>{Icons.edit}Modifier</button>
+          {user?.role === 'admin' && (
+            <button className="btn" onClick={() => setEditing(true)}>{Icons.edit}Modifier</button>
+          )}
         </div>
       </div>
 
@@ -253,6 +282,7 @@ function StationForm({ initial, onSave, onCancel }) {
     latitude: initial?.latitude ?? '',
     longitude: initial?.longitude ?? '',
     altitudeM: initial?.altitudeM ?? '',
+    isActive: initial?.isActive ?? true,
     description: initial?.description ?? '',
   });
 
@@ -281,6 +311,15 @@ function StationForm({ initial, onSave, onCancel }) {
         {row('Latitude', 'latitude', 'number')}
         {row('Longitude', 'longitude', 'number')}
         {row('Description', 'description')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'end', paddingBottom: 6 }}>
+          <input 
+            type="checkbox" 
+            id="is-active-check"
+            checked={form.isActive} 
+            onChange={e => set('isActive', e.target.checked)} 
+          />
+          <label htmlFor="is-active-check" style={{ fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Station active</label>
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button className="btn btn-primary" onClick={() => onSave(form)}>{Icons.check} Enregistrer</button>

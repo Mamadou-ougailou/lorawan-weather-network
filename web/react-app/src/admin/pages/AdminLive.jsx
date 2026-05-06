@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Icons } from '../primitives.jsx';
 import { fetchLive } from '../adminApi.js';
 
-export default function AdminLive() {
+export default function AdminLive({ user }) {
   const [cache, setCache]       = useState({});
   const [loading, setLoading]   = useState(true);
   const [lastPoll, setLastPoll] = useState(null);

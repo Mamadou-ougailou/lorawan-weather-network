@@ -1078,6 +1078,12 @@
   animation: slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
+  transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+}
+
+.login-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 35px 70px -15px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="light"] .login-card {
@@ -1230,6 +1236,11 @@
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
+  outline: none;
+}
+.checkbox-label input:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: var(--accent);
 }
 .checkbox-label input:checked {
   background: var(--accent);

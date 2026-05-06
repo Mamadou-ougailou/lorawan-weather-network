@@ -3,7 +3,7 @@ import { Icons } from '../primitives.jsx';
 import { Chart } from '../AdminShell.jsx';
 import { fetchStations, fetchHistory } from '../adminApi.js';
 
-export default function AdminHistory() {
+export default function AdminHistory({ user }) {
   const [stations, setStations] = useState([]);
   const [selectedSite, setSite] = useState('');
   const [hours, setHours]       = useState(24);

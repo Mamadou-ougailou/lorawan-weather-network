@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Icons, Spark } from '../primitives.jsx';
+import { Icons, Spark, fmt } from '../primitives.jsx';
 import { AlertsList } from '../AdminShell.jsx';
-import { fetchAlerts, resolveAlert, deleteAlert } from '../adminApi.js';
+import { fetchAlerts, resolveAlert, deleteAlert, fetchStations } from '../adminApi.js';
 
 function Kpi({ label, icon, value, unit, delta, color }) {
   const arrow = { up: '↑', down: '↓', warn: '!', flat: '·' }[delta?.tone] || '·';
@@ -14,8 +14,9 @@ function Kpi({ label, icon, value, unit, delta, color }) {
   );
 }
 
-export default function AdminAlerts() {
+export default function AdminAlerts({ user }) {
   const [alerts, setAlerts]   = useState([]);
+  const [stations, setStations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [levelFilter, setLevelFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('active');
@@ -23,8 +24,8 @@ export default function AdminAlerts() {
 
   const load = () => {
     setLoading(true);
-    fetchAlerts()
-      .then(setAlerts)
+    Promise.all([fetchAlerts(), fetchStations()])
+      .then(([a, s]) => { setAlerts(a); setStations(s); })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
@@ -34,10 +35,31 @@ export default function AdminAlerts() {
   const handleResolve = (id) => resolveAlert(id).then(load).catch(alert);
   const handleDelete  = (id) => { if (window.confirm('Supprimer cette alerte ?')) deleteAlert(id).then(load).catch(alert); };
 
-  const active   = alerts.filter(a => !a.resolvedAt);
-  const resolved = alerts.filter(a =>  a.resolvedAt);
+  const activeAlertsFromDB = alerts.filter(a => !a.resolvedAt);
+  
+  // Injection d'alertes virtuelles (même logique que Dashboard)
+  const staleStations = stations.filter(s => 
+    s.isActive && 
+    s.lastSeenAt && 
+    (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000) &&
+    !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
+  );
 
-  const displayed = alerts.filter(a => {
+  const virtualAlerts = staleStations.map(s => ({
+    id: `v-${s.id}`,
+    siteId: s.id,
+    siteName: s.name,
+    metric: 'offline',
+    message: `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`,
+    triggeredAt: s.lastSeenAt,
+    isVirtual: true
+  }));
+
+  const allAlerts = [...alerts, ...virtualAlerts];
+  const active    = allAlerts.filter(a => !a.resolvedAt);
+  const resolved  = allAlerts.filter(a =>  a.resolvedAt);
+
+  const displayed = allAlerts.filter(a => {
     if (statusFilter === 'active'   && a.resolvedAt)   return false;
     if (statusFilter === 'resolved' && !a.resolvedAt)  return false;
     if (levelFilter !== 'all' && a.metric !== levelFilter) return false;
@@ -45,7 +67,7 @@ export default function AdminAlerts() {
     return true;
   });
 
-  const metrics = [...new Set(alerts.map(a => a.metric))];
+  const metrics = [...new Set(allAlerts.map(a => a.metric))];
 
   return (
     <div className="content">
@@ -56,7 +78,7 @@ export default function AdminAlerts() {
         </div>
         <div className="page-head-actions">
           <button className="btn" onClick={load}>{Icons.refresh}Actualiser</button>
-          {active.length > 0 && (
+          {user?.role === 'admin' && active.length > 0 && (
             <button className="btn btn-primary" onClick={() => active.forEach(a => resolveAlert(a.id)).then?.(load) || Promise.all(active.map(a => resolveAlert(a.id))).then(load)}>
               {Icons.check}Tout résoudre
             </button>
@@ -92,7 +114,7 @@ export default function AdminAlerts() {
         </div>
         {loading
           ? <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Chargement…</div>
-          : <AlertsList items={displayed} onResolve={handleResolve} onDelete={handleDelete} />
+          : <AlertsList items={displayed} onResolve={user?.role === 'admin' ? handleResolve : null} onDelete={user?.role === 'admin' ? handleDelete : null} />
         }
       </div>
     </div>
