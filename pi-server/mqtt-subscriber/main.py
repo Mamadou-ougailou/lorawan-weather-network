@@ -32,11 +32,17 @@ def load_config(path: str) -> configparser.ConfigParser:
     cfg.read(path)
 
     env_map = {
-        "WEATHER_DB_HOST":     ("database", "host"),
-        "WEATHER_DB_PORT":     ("database", "port"),
-        "WEATHER_DB_USER":     ("database", "user"),
-        "WEATHER_DB_PASSWORD": ("database", "password"),
-        "WEATHER_DB_NAME":     ("database", "database"),
+        "DB_HOST":             ("database", "host"),
+        "DB_PORT":             ("database", "port"),
+        "DB_USER":             ("database", "user"),
+        "DB_PASSWORD":         ("database", "password"),
+        "DB_NAME":             ("database", "database"),
+        "MQTT_HOST":           ("mqtt", "host"),
+        "MQTT_PORT":           ("mqtt", "port"),
+        "MQTT_USERNAME":       ("mqtt", "username"),
+        "MQTT_PASSWORD":       ("mqtt", "password"),
+        "MQTT_TLS":            ("mqtt", "tls"),
+        "MQTT_CLIENT_ID":      ("mqtt", "client_id"),
     }
     for env_var, (section, key) in env_map.items():
         val = os.environ.get(env_var)
@@ -44,6 +50,16 @@ def load_config(path: str) -> configparser.ConfigParser:
             if section not in cfg:
                 cfg[section] = {}
             cfg[section][key] = val
+
+    # Special handling for topics (comma-separated list of "topic=siteId")
+    env_topics = os.environ.get("MQTT_TOPICS")
+    if env_topics:
+        if "stations" not in cfg:
+            cfg["stations"] = {}
+        for pair in env_topics.split(","):
+            if "=" in pair:
+                topic, site_id = pair.split("=", 1)
+                cfg["stations"][topic.strip()] = site_id.strip()
 
     return cfg
 

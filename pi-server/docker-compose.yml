@@ -14,7 +14,6 @@ services:
       MARIADB_USER: weather
       MARIADB_PASSWORD: weatherdev
     volumes:
-      # Chemin mis à jour vers le sous-dossier mqtt-subscriber
       - ./mqtt-subscriber/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - weather_pi_db:/var/lib/mysql
     networks:
@@ -33,17 +32,9 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    volumes:
-      # Chemin mis à jour vers le config.ini dans mqtt-subscriber
-      - ./mqtt-subscriber/config.ini:/app/config.ini:ro
+    env_file: .env
     networks:
       - weather_net
-    environment:
-      WEATHER_DB_HOST: mariadb
-      WEATHER_DB_PORT: 3306
-      WEATHER_DB_USER: weather
-      WEATHER_DB_PASSWORD: weatherdev
-      WEATHER_DB_NAME: weather_network
 
   # ─── Node.js REST API ─────────────────────────────────────────────────────
   api:
@@ -51,24 +42,12 @@ services:
     container_name: weather-api
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${API_PORT:-3000}:${API_PORT:-3000}"
+    env_file: .env
+    environment:
+      MQTT_CLIENT_ID: ${MQTT_CLIENT_ID_API}
     networks:
       - weather_net
-    environment:
-      PORT: 3000
-      DB_HOST: mariadb
-      DB_PORT: 3306
-      DB_USER: weather
-      DB_PASSWORD: weatherdev
-      DB_NAME: weather_network
-      # MQTT bridge for real-time WebSocket push
-      MQTT_HOST: mqtt.univ-cotedazur.fr
-      MQTT_PORT: 443
-      MQTT_TLS: "true"
-      MQTT_USERNAME: fablab2122
-      MQTT_PASSWORD: 2122
-      MQTT_CLIENT_ID: weather-api-realtime
-      MQTT_TOPICS: "ttn/v3/fablab2223@ttn/devices/weather-station-davis/up=1,ttn/v3/fablab2223@ttn/devices/l3-arduino-mega-meteo/up=2"
     depends_on:
       mariadb:
         condition: service_healthy
@@ -79,4 +58,3 @@ volumes:
 networks:
   weather_net:
     name: weather_net
-
