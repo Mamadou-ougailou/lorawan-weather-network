@@ -77,6 +77,7 @@ export default function AdminStations() {
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Chargement…</div>
         ) : (
+        <div style={{ overflowX: 'auto' }}>
           <table className="tbl">
             <thead><tr>
               <th style={{ width: 24 }} />
@@ -117,6 +118,7 @@ export default function AdminStations() {
               })}
             </tbody>
           </table>
+        </div>
         )}
       </div>
     </div>
@@ -272,7 +274,7 @@ function StationForm({ initial, onSave, onCancel }) {
   return (
     <div className="card" style={{ marginBottom: 'var(--gap-grid)', padding: 'var(--pad-card)' }}>
       <h3 className="card-title" style={{ marginBottom: 16 }}>{initial ? 'Modifier la station' : 'Nouvelle station'}</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12, marginBottom: 16 }}>
         {row('Nom *', 'name')}
         {row('Ville', 'city')}
         {row('Altitude (m)', 'altitudeM', 'number')}

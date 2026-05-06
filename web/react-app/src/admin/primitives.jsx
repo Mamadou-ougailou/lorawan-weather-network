@@ -40,6 +40,8 @@ export const Icons = {
   chevron:   <Icon d="M9 18l6-6-6-6" />,
   back:      <Icon d="M15 18l-6-6 6-6" />,
   live:      <Icon d={<><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></>} />,
+  menu:      <Icon d="M4 6h16M4 12h16M4 18h16" />,
+  user:      <Icon d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
 };
 
 // ── Chip ─────────────────────────────────────────────────────────────────────
@@ -51,19 +53,30 @@ export const Chip = ({ tone = 'neutral', mono = false, dot = true, children }) =
 );
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
-export const Spark = ({ values, color = 'currentColor', w = 90, h = 36, fill = true }) => {
+export const Spark = ({ values, color = 'currentColor', w = 120, h = 40, fill = true }) => {
   if (!values || !values.length) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
   const step = w / (values.length - 1);
-  const pts = values.map((v, i) => [i * step, h - ((v - min) / range) * (h - 4) - 2]);
-  const path = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
-  const area = path + ` L${w},${h} L0,${h} Z`;
+  const pts = values.map((v, i) => [i * step, h - ((v - min) / range) * (h - 8) - 4]);
+
+  const getCurve = (pts) => {
+    return pts.map((p, i) => {
+      if (i === 0) return `M ${p[0]},${p[1]}`;
+      const prev = pts[i - 1];
+      const cp1x = prev[0] + (p[0] - prev[0]) / 2;
+      return `C ${cp1x},${prev[1]} ${cp1x},${p[1]} ${p[0]},${p[1]}`;
+    }).join(' ');
+  };
+
+  const linePath = getCurve(pts);
+  const areaPath = `${linePath} L ${w},${h} L 0,${h} Z`;
+
   return (
-    <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`}>
-      {fill && <path d={area} fill={color} opacity="0.10" />}
-      <path d={path} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="kpi-spark" viewBox={`0 0 ${w} ${h}`} style={{ overflow: 'visible' }}>
+      {fill && <path d={areaPath} fill={color} opacity="0.12" />}
+      <path d={linePath} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 };

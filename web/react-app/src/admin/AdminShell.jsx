@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons, Chip } from './primitives.jsx';
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
-export function AdminSidebar({ active, onNavigate, alertCount }) {
+export function AdminSidebar({ active, onNavigate, alertCount, isOpen, setOpen, user }) {
   const items = [
     { id: 'dashboard',  label: 'Dashboard',         icon: Icons.dashboard },
     { id: 'stations',   label: 'Stations',          icon: Icons.station },
@@ -14,6 +14,10 @@ export function AdminSidebar({ active, onNavigate, alertCount }) {
     { id: 'alerts',     label: 'Alertes',           icon: Icons.alerts,  badge: alertCount || null, tone: 'danger' },
     { id: 'mappings',   label: 'Mappings capteurs', icon: Icons.mapping },
   ];
+
+  if (user?.role === 'admin') {
+    items2.push({ id: 'users', label: 'Utilisateurs', icon: Icons.user });
+  }
   const Item = ({ it }) => (
     <div className="nav-item" data-active={active === it.id} onClick={() => onNavigate(it.id)}>
       {it.icon}
@@ -22,25 +26,31 @@ export function AdminSidebar({ active, onNavigate, alertCount }) {
     </div>
   );
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        <div className="brand-mark">A</div>
-        <div className="brand-name">Admin · Réseau</div>
-      </div>
-      <nav className="nav">
-        <div className="nav-section-label">Observation</div>
-        {items.map(it => <Item key={it.id} it={it} />)}
-        <div className="nav-section-label">Opérations</div>
-        {items2.map(it => <Item key={it.id} it={it} />)}
-      </nav>
-    </aside>
+    <>
+      <div className={`sidebar-overlay ${isOpen ? 'show' : ''}`} onClick={() => setOpen(false)} />
+      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
+        <div className="sidebar-brand">
+          <div className="brand-mark">A</div>
+          <div className="brand-name">Admin · Réseau</div>
+          <button className="mobile-close" onClick={() => setOpen(false)}>{Icons.close}</button>
+        </div>
+        <nav className="nav">
+          <div className="nav-section-label">Observation</div>
+          {items.map(it => <Item key={it.id} it={it} />)}
+          <div className="nav-section-label">Opérations</div>
+          {items2.map(it => <Item key={it.id} it={it} />)}
+        </nav>
+      </aside>
+    </>
   );
 }
 
 // ── Topbar ────────────────────────────────────────────────────────────────────
-export function AdminTopbar({ crumbs, onBack }) {
+export function AdminTopbar({ crumbs, onBack, theme, onToggleTheme, onMenuClick, onLogout }) {
   return (
     <header className="topbar">
+      <button className="mobile-menu-btn" onClick={onMenuClick}>{Icons.menu}</button>
+      
       <div className="crumbs">
         {crumbs.map((c, i) => (
           <React.Fragment key={i}>
@@ -49,14 +59,20 @@ export function AdminTopbar({ crumbs, onBack }) {
           </React.Fragment>
         ))}
       </div>
-      <span className="live-pill"><span className="pulse" />ADMIN</span>
-      <div className="topbar-search">
-        {Icons.search}
-        <input placeholder="Rechercher…" />
-      </div>
-      <div className="topbar-actions">
+      
+      <div className="topbar-actions" style={{ marginLeft: 'auto' }}>
+        <span className="live-pill hidden-xs"><span className="pulse" />ADMIN</span>
+        
+        <button className="icon-btn" onClick={onToggleTheme} title="Changer le thème">
+          {theme === 'dark' ? Icons.sun : Icons.moon}
+        </button>
+
+        <button className="icon-btn" onClick={onLogout} title="Déconnexion">
+          ❌
+        </button>
+
         <button className="btn btn-ghost" onClick={onBack} style={{ gap: 6 }}>
-          {Icons.back} Retour au site
+          {Icons.back} <span className="hidden-xs">Retour au site</span>
         </button>
       </div>
     </header>
@@ -117,40 +133,79 @@ export function AlertsList({ items = [], compact = false, onResolve, onDelete })
   );
 }
 
-// ── Chart (line or bar) ───────────────────────────────────────────────────────
-export function Chart({ series = [], label, color = '#38bdf8', bars = false }) {
-  const W = 880, H = 180;
+// ── Chart (pro SVG version with curves & gradients) ──────────────────────────
+export function Chart({ series = [], label, color = '#6366f1', bars = false }) {
+  const W = 880, H = 220;
+  const PAD_X = 40, PAD_T = 30, PAD_B = 30;
+  
   if (!series.length) return null;
+  
   const vals = series.map(p => (typeof p === 'object' ? Object.values(p).find(v => typeof v === 'number') ?? 0 : p));
   const min = Math.min(...vals);
   const max = Math.max(...vals);
   const range = (max - min) || 1;
-  const step = (W - 40) / Math.max(vals.length - 1, 1);
-  const yOf = v => H - 30 - ((v - min) / range) * (H - 50);
-  const pts = vals.map((v, i) => [20 + i * step, yOf(v)]);
-  const path = pts.map((p, i) => (i === 0 ? `M${p[0]},${p[1]}` : `L${p[0]},${p[1]}`)).join(' ');
-  const area = path + ` L${20 + (vals.length - 1) * step},${H - 30} L20,${H - 30} Z`;
+  const count = vals.length;
+  const step = (W - PAD_X * 2) / Math.max(count - 1, 1);
+  
+  const yOf = v => H - PAD_B - ((v - min) / range) * (H - PAD_T - PAD_B);
+  const pts = vals.map((v, i) => [PAD_X + i * step, yOf(v)]);
+
+  // Smooth Bezier path helper
+  const getCurve = (pts) => {
+    if (pts.length < 2) return '';
+    const d = pts.map((p, i) => {
+      if (i === 0) return `M ${p[0]},${p[1]}`;
+      const prev = pts[i - 1];
+      const cp1x = prev[0] + (p[0] - prev[0]) / 2;
+      const cp2x = prev[0] + (p[0] - prev[0]) / 2;
+      return `C ${cp1x},${prev[1]} ${cp2x},${p[1]} ${p[0]},${p[1]}`;
+    });
+    return d.join(' ');
+  };
+
+  const linePath = getCurve(pts);
+  const areaPath = `${linePath} L ${pts[pts.length - 1][0]},${H - PAD_B} L ${pts[0][0]},${H - PAD_B} Z`;
+  const gradId = `grad-${label?.replace(/\s/g, '') || Math.random().toString(36).substr(2, 5)}`;
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-        <div style={{ fontSize: 12, color: 'var(--text-1)', fontWeight: 500 }}>{label}</div>
-      </div>
-      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 180 }}>
-        {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
-          <line key={i} x1="20" x2={W - 20} y1={H - 30 - p * (H - 50)} y2={H - 30 - p * (H - 50)}
-                stroke="currentColor" strokeOpacity="0.06" strokeDasharray="2 4" />
-        ))}
-        {[0, 0.25, 0.5, 0.75, 1].map((p, i) => (
-          <text key={i} x="6" y={H - 30 - p * (H - 50) + 3} fontSize="9" fill="currentColor" opacity="0.5"
-                fontFamily="monospace">{(min + p * range).toFixed(1)}</text>
-        ))}
-        {bars ? pts.map((p, i) => (
-          <rect key={i} x={p[0] - step / 3} y={p[1]} width={Math.max(step / 1.6, 2)} height={H - 30 - p[1]}
-                fill={color} opacity="0.7" rx="1.5" />
-        )) : (
+    <div className="chart-container">
+      {label && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: 'var(--text-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+        </div>
+      )}
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', overflow: 'visible' }}>
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
+          const y = H - PAD_B - p * (H - PAD_T - PAD_B);
+          return (
+            <React.Fragment key={i}>
+              <line x1={PAD_X} x2={W - PAD_X} y1={y} y2={y} stroke="var(--line-strong)" strokeWidth="0.5" strokeDasharray="4 4" />
+              <text x={PAD_X - 10} y={y + 3} textAnchor="end" fontSize="10" fill="var(--text-3)" fontFamily="var(--font-mono)">
+                {(min + p * range).toFixed(1)}
+              </text>
+            </React.Fragment>
+          );
+        })}
+
+        {bars ? (
+          pts.map((p, i) => (
+            <rect key={i} x={p[0] - step / 3} y={p[1]} width={Math.max(step / 1.6, 2)} height={H - PAD_B - p[1]}
+                  fill={color} opacity="0.8" rx="2" />
+          ))
+        ) : (
           <>
-            <path d={area} fill={color} opacity="0.10" />
-            <path d={path} stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+            <path d={areaPath} fill={`url(#${gradId})`} />
+            <path d={linePath} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+            {/* Glow effect */}
+            <path d={linePath} fill="none" stroke={color} strokeWidth="6" strokeOpacity="0.1" strokeLinecap="round" strokeLinejoin="round" />
           </>
         )}
       </svg>

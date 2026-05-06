@@ -77,6 +77,7 @@ export default function AdminMappings() {
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-2)' }}>Chargement…</div>
         ) : (
+        <div style={{ overflowX: 'auto' }}>
           <table className="tbl">
             <thead><tr>
               <th>#</th>
@@ -110,6 +111,7 @@ export default function AdminMappings() {
               ))}
             </tbody>
           </table>
+        </div>
         )}
       </div>
     </div>
@@ -127,7 +129,7 @@ function MappingForm({ initial, onSave, onCancel }) {
   return (
     <div className="card" style={{ marginBottom: 'var(--gap-grid)', padding: 'var(--pad-card)' }}>
       <h3 className="card-title" style={{ marginBottom: 16 }}>{initial ? 'Modifier le mapping' : 'Nouveau mapping'}</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end', marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, alignItems: 'end', marginBottom: 16 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>Clé brute (raw_key) *</label>
           <input className="filter-input" value={form.rawKey} onChange={e => set('rawKey', e.target.value)}
