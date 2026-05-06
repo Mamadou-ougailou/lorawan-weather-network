@@ -140,6 +140,15 @@ export function AdminTopbar({ crumbs, onBack, theme, onToggleTheme, onMenuClick,
         
         .v-sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
         
+        @media (max-width: 640px) {
+          .topbar { padding: 0 12px; height: 56px; }
+          .crumbs { display: none !important; }
+          .topbar-left { gap: 8px; }
+          .topbar-actions { gap: 4px; }
+          .topbar-back { padding: 6px 10px !important; font-size: 11px !important; }
+          .v-sep { display: none; }
+        }
+        
         .top-btn {
           width: 36px;
           height: 36px;
@@ -159,6 +168,11 @@ export function AdminTopbar({ crumbs, onBack, theme, onToggleTheme, onMenuClick,
         .user-info { display: flex; flexDirection: column; align-items: flex-end; line-height: 1.2; }
         .user-email { font-size: 12px; font-weight: 600; color: var(--text-0); }
         .user-role { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.02em; }
+        
+        @media (max-width: 640px) {
+          .topbar-user { gap: 6px; }
+          .topbar-user .avatar { width: 28px !important; height: 28px !important; fontSize: 9px !important; }
+        }
         
         .topbar-back {
           padding: 8px 16px;
