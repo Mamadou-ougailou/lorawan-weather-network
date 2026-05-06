@@ -66,16 +66,16 @@ export default function Compare() {
   return (
     <section className="animate-in fade-in duration-500">
       <h2 className="text-2xl md:text-3xl font-bold font-headline tracking-tighter text-on-surface mb-6">Comparaison inter-sites</h2>
-      <div className="bg-surface-container-high rounded-xl p-6 border border-outline-variant flex flex-wrap gap-6 items-end mb-8 relative z-20">
-        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[200px] max-w-xs">
+      <div className="bg-surface-container-high rounded-xl p-4 md:p-6 border border-outline-variant flex flex-col sm:flex-row sm:flex-wrap gap-4 sm:gap-6 sm:items-end mb-8 relative z-20">
+        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant w-full sm:flex-1 sm:max-w-xs">
           Période :
-          <select value={hours} onChange={e => setHours(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
+          <select value={hours} onChange={e => setHours(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 sm:p-2.5 outline-none transition-colors">
             {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>
-        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant flex-1 min-w-[200px] max-w-xs">
+        <label className="flex flex-col gap-2 text-sm font-medium text-on-surface-variant w-full sm:flex-1 sm:max-w-xs">
           Variable :
-          <select value={varKey} onChange={e => setVarKey(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5 outline-none transition-colors">
+          <select value={varKey} onChange={e => setVarKey(e.target.value)} className="bg-surface-container-highest border border-outline-variant text-on-surface text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-3 sm:p-2.5 outline-none transition-colors">
             {varOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </label>

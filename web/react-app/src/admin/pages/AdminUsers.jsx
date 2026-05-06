@@ -152,13 +152,13 @@ export default function AdminUsers({ currentUser }) {
         </div>
       )}
 
-      <div className="card">
+      <div className="card" style={{ overflowX: 'auto' }}>
         <table className="tbl">
           <thead>
             <tr>
               <th style={{ paddingLeft: 24 }}>Email</th>
               <th>Rôle</th>
-              <th>Date de création</th>
+              <th className="hidden-xs">Date de création</th>
               <th style={{ textAlign: 'right', paddingRight: 24 }}>Actions</th>
             </tr>
           </thead>
@@ -187,7 +187,7 @@ export default function AdminUsers({ currentUser }) {
                     {u.role === 'admin' ? 'Administrateur' : 'Observateur'}
                   </Chip>
                 </td>
-                <td className="mono" style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                <td className="mono hidden-xs" style={{ fontSize: 12, color: 'var(--text-2)' }}>
                   {fmt.date(u.created_at)}
                 </td>
                 <td style={{ textAlign: 'right', paddingRight: 24 }}>

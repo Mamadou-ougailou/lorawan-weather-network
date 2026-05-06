@@ -91,31 +91,63 @@ export default function Dashboard({ refreshSignal }) {
     return { text: st ? st.name : "Réseau Local", ...colors[(st?.id || 0) % colors.length] };
   };
 
+  const isNight = useMemo(() => {
+    // 1. Priorité aux données réelles : si on a un capteur de luminosité (Lux)
+    if (sMain.lux !== undefined) {
+      return sMain.lux < 50; // Seuil de pénombre
+    }
+
+    // 2. Fallback intelligent : calcul basé sur la saison (approximation pour l'Hémisphère Nord)
+    const now = new Date();
+    const hour = now.getHours();
+    const month = now.getMonth(); // 0-11
+
+    // Heures de coucher/lever approximatives selon les saisons
+    // Hiver (Nov, Dec, Jan, Fev) : Nuit de 17h à 8h
+    if (month >= 10 || month <= 1) {
+      return hour >= 17 || hour < 8;
+    }
+    // Eté (Mai, Juin, Juil, Aout) : Nuit de 21h à 5h
+    if (month >= 4 && month <= 7) {
+      return hour >= 21 || hour < 5;
+    }
+    // Mi-saison (Mars, Avr, Sept, Oct) : Nuit de 19h à 7h
+    return hour >= 19 || hour < 7;
+  }, [sMain.lux]);
+
   return (
     <>
-      <section className="relative overflow-hidden rounded-xl bg-surface-container-low bg-gradient-to-br from-primary/15 to-transparent p-4 md:p-10 border-l-4 border-primary">
+      <section className={`relative overflow-hidden rounded-xl p-4 md:p-10 border-l-4 transition-all duration-700 ${
+        isNight 
+          ? 'bg-slate-900 bg-gradient-to-br from-indigo-900/40 to-slate-900 border-indigo-400 shadow-2xl shadow-indigo-900/20' 
+          : 'bg-surface-container-low bg-gradient-to-br from-primary/15 to-transparent border-primary'
+      }`}>
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8">
           <div>
-            <div className="flex items-center gap-2 text-primary font-bold tracking-widest uppercase text-[10px] md:text-xs mb-2">
-              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>location_on</span>
-              En Direct
+            <div className={`flex items-center gap-2 font-bold tracking-widest uppercase text-[10px] md:text-xs mb-2 ${isNight ? 'text-indigo-300' : 'text-primary'}`}>
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>
+                {isNight ? 'dark_mode' : 'location_on'}
+              </span>
+              {isNight ? 'Observations Nocturnes' : 'En Direct'}
             </div>
-            <h3 className="text-3xl md:text-6xl font-black font-headline tracking-tighter text-on-surface mb-1 md:mb-2">{currentStation?.city || currentStation?.name || 'Inconnu'}</h3>
-            <p className="text-on-surface-variant text-sm md:text-base font-medium flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm text-primary" style={{ fontSize: 16 }}>schedule</span>
+            <h3 className={`text-3xl md:text-6xl font-black font-headline tracking-tighter mb-1 md:mb-2 ${isNight ? 'text-white' : 'text-on-surface'}`}>
+              {currentStation?.city || currentStation?.name || 'Inconnu'}
+            </h3>
+            <p className={`text-sm md:text-base font-medium flex items-center gap-2 ${isNight ? 'text-indigo-200/70' : 'text-on-surface-variant'}`}>
+              <span className="material-symbols-outlined text-sm" style={{ fontSize: 16 }}>schedule</span>
               Heure: {new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
             </p>
           </div>
           <div className="flex items-center gap-4 md:gap-8 justify-between md:justify-end mt-4 md:mt-0 w-full md:w-auto">
             <div className="text-left md:text-right flex-1">
-              <div className="text-5xl md:text-8xl font-black font-headline tracking-tighter text-primary data-glow">
+              <div className={`text-5xl md:text-8xl font-black font-headline tracking-tighter data-glow ${isNight ? 'text-indigo-300' : 'text-primary'}`}>
                 {fmt(sMain.temperature, 0)}<span className="text-xl md:text-4xl align-top">°C</span>
               </div>
             </div>
             <div className="relative w-24 h-24 md:w-32 md:h-32 flex items-center justify-center shrink-0">
-              <div className="absolute inset-0 bg-primary/20 blur-2xl md:blur-3xl rounded-full"></div>
-              <span className="material-symbols-outlined text-7xl md:text-8xl text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
-                wb_sunny
+              <div className={`absolute inset-0 blur-2xl md:blur-3xl rounded-full ${isNight ? 'bg-indigo-500/30' : 'bg-primary/20'}`}></div>
+              <span className={`material-symbols-outlined text-7xl md:text-8xl ${isNight ? 'text-indigo-200' : 'text-primary'}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                {isNight ? 'bedtime' : 'wb_sunny'}
               </span>
             </div>
           </div>
@@ -146,26 +178,26 @@ export default function Dashboard({ refreshSignal }) {
       </section>
 
       {otherIds.length > 0 && (
-        <section className="flex flex-wrap gap-4 md:gap-8 pb-4 lg:pb-0">
-        {otherIds.map(id => {
-          const st = stations.find(s => s.id === id);
-          const tagInfo = getSiteTag(st);
-          return (
-            <div key={id} className="min-w-[280px] md:min-w-0 flex-1">
-              <SecondaryCard
-                siteName={st && st.city ? st.city : `Station ${id}`}
-                data={latest[id] || {}}
-                tag={tagInfo.text}
-                tagColor={tagInfo.color}
-                tagBg={tagInfo.bg}
-                mappings={mappings}
-                commonKeys={commonKeys}
-                onClick={() => setMainStationId(id)}
-              />
-            </div>
-          );
-        })}
-      </section>
+        <section className="flex md:flex-wrap gap-4 md:gap-6 pb-4 lg:pb-0 overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar -mx-4 px-4 md:mx-0 md:px-0">
+          {otherIds.map(id => {
+            const st = stations.find(s => s.id === id);
+            const tagInfo = getSiteTag(st);
+            return (
+              <div key={id} className="flex-1 min-w-[85vw] md:min-w-[300px] shrink-0 snap-center md:snap-align-none">
+                <SecondaryCard
+                  siteName={st && st.city ? st.city : `Station ${id}`}
+                  data={latest[id] || {}}
+                  tag={tagInfo.text}
+                  tagColor={tagInfo.color}
+                  tagBg={tagInfo.bg}
+                  mappings={mappings}
+                  commonKeys={commonKeys}
+                  onClick={() => setMainStationId(id)}
+                />
+              </div>
+            );
+          })}
+        </section>
       )}
 
       {chart24h && (
@@ -244,31 +276,49 @@ function SecondaryCard({ siteName, data, tag, tagColor, tagBg, onClick, mappings
   return (
     <div
       onClick={onClick}
-      className="bg-surface-container-high rounded-xl p-4 md:p-8 border border-white/5 relative group hover:bg-surface-container-highest transition-all cursor-pointer h-full flex flex-col justify-between"
+      className="bg-surface-container-high rounded-2xl p-6 border border-white/5 relative group hover:bg-surface-container-highest hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col h-full shadow-lg hover:shadow-primary/10"
     >
-      <div className="flex justify-between items-start mb-4 md:mb-10">
-        <div>
-          <span className={`inline-block px-2 py-0.5 ${tagBg} ${tagColor} text-[9px] font-bold rounded-full mb-2 uppercase tracking-tighter`}>{tag}</span>
-          <h4 className="text-xl md:text-3xl font-black font-headline tracking-tighter leading-none">{siteName}</h4>
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex-1 min-w-0">
+          <span className={`inline-block px-2.5 py-1 ${tagBg} ${tagColor} text-[10px] font-black rounded-lg mb-3 uppercase tracking-wider`}>
+            {tag}
+          </span>
+          <h4 className="text-2xl font-black font-headline tracking-tighter leading-none truncate pr-2">
+            {siteName}
+          </h4>
         </div>
-        <div className="text-right">
-          <div className="text-2xl md:text-4xl font-headline font-bold text-on-surface">{fmt(data.temperature, 0)}°C</div>
+        <div className="text-right shrink-0">
+          <div className="text-3xl font-black font-headline text-primary">
+            {fmt(data.temperature, 0)}<span className="text-sm align-top">°C</span>
+          </div>
         </div>
       </div>
-      <div className="flex flex-wrap gap-2 md:gap-4 w-full">
-        {commonKeys.filter(k => data[k] != null).map(camelKey => {
+
+      <div className="grid grid-cols-3 gap-2 mt-auto">
+        {commonKeys.filter(k => data[k] != null).slice(0, 3).map(camelKey => {
             const meta = getSensorMeta(camelKey);
             const decimals = (camelKey.includes('Speed') || camelKey.includes('Quantity') || camelKey.includes('Rate')) ? 1 : 0;
             return (
-              <div key={camelKey} className="bg-surface-container-low p-2 md:p-4 rounded-lg flex flex-col items-center justify-center text-center flex-1 min-w-[80px]">
-                <span className={`material-symbols-outlined text-[12px] md:text-sm ${meta.color} mb-1`}>{meta.icon}</span>
-                <div className="leading-tight">
-                  <p className="text-[8px] md:text-[10px] text-on-surface-variant uppercase font-bold">{meta.label}</p>
-                  <p className="text-[10px] md:text-sm font-headline font-bold">{fmt(data[camelKey], decimals)}{meta.unit}</p>
+              <div key={camelKey} className="bg-surface-container-low/50 p-2.5 rounded-xl flex flex-col items-center justify-center text-center border border-white/5">
+                <span className={`material-symbols-outlined text-sm ${meta.color} mb-1.5`} style={{ fontSize: 18 }}>
+                  {meta.icon}
+                </span>
+                <div className="leading-none">
+                  <p className="text-[10px] font-black font-headline text-primary mb-0.5">
+                    {fmt(data[camelKey], decimals)}<span className="text-[8px] font-medium ml-0.5">{meta.unit}</span>
+                  </p>
+                  <p className="text-[8px] text-on-surface-variant uppercase font-bold tracking-tighter opacity-70">
+                    {meta.label}
+                  </p>
                 </div>
               </div>
             );
         })}
+      </div>
+      
+      {/* Visual hint on hover */}
+      <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        <span className="material-symbols-outlined text-primary text-xl">arrow_forward</span>
       </div>
     </div>
   );
