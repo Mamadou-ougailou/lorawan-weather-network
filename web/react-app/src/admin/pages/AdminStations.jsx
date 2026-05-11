@@ -102,9 +102,9 @@ export default function AdminStations({ user }) {
                 const m = latest.find(l => l.siteId === s.id);
                 const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
                 
-                // Fallback: si pas de données depuis 45 min, on considère comme offline même sans alerte
+                // Fallback: si pas de données depuis 1m30 ou jamais vue, on considère comme offline même sans alerte
                 const lastContact = s.lastSeenAt ? new Date(s.lastSeenAt) : null;
-                const isStale = lastContact && (new Date() - lastContact > 45 * 60 * 1000);
+                const isStale = !lastContact || (new Date() - lastContact > 1.5 * 60 * 1000);
                 
                 const isOffline = isOfflineAlert || isStale;
                 const tone = !s.isActive ? 'off' : (isOffline ? 'danger' : 'ok');

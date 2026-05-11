@@ -32,16 +32,21 @@ export default function AdminAlerts({ user }) {
 
   useEffect(() => { load(); }, []);
 
-  const handleResolve = (id) => resolveAlert(id).then(load).catch(alert);
-  const handleDelete  = (id) => { if (window.confirm('Supprimer cette alerte ?')) deleteAlert(id).then(load).catch(alert); };
+  const handleResolve = (id) => {
+    if (String(id).startsWith('v-')) return;
+    resolveAlert(id).then(load).catch(console.error);
+  };
+  const handleDelete = (id) => {
+    if (String(id).startsWith('v-')) return;
+    if (window.confirm('Supprimer cette alerte ?')) deleteAlert(id).then(load).catch(console.error);
+  };
 
   const activeAlertsFromDB = alerts.filter(a => !a.resolvedAt);
   
   // Injection d'alertes virtuelles (même logique que Dashboard)
   const staleStations = stations.filter(s => 
     s.isActive && 
-    s.lastSeenAt && 
-    (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000) &&
+    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 1.5 * 60 * 1000)) &&
     !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
   );
 
@@ -50,8 +55,10 @@ export default function AdminAlerts({ user }) {
     siteId: s.id,
     siteName: s.name,
     metric: 'offline',
-    message: `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`,
-    triggeredAt: s.lastSeenAt,
+    message: s.lastSeenAt 
+      ? `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`
+      : 'Station n\'a jamais publié de données',
+    triggeredAt: s.lastSeenAt || new Date().toISOString(),
     isVirtual: true
   }));
 

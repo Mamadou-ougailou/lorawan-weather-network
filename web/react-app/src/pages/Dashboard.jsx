@@ -369,7 +369,8 @@ export function buildTrendDatasets(rows, field, stations, hours = 6, interval = 
       pointRadius: 2,
       spanGaps: true,
     };
-  });
+  }).filter(ds => ds.data.some(v => v != null));
+
   return {
     labels: bucketSet.map((b, i) => i === bucketSet.length - 1 ? 'Maintenant' : b),
     datasets
@@ -429,7 +430,8 @@ export function buildCompareDatasets(rows, field, stations, hours = 24, latest =
       pointRadius: 2,
       spanGaps: true,
     };
-  });
+  }).filter(ds => ds.data.some(v => v != null));
+
   return { labels: hourSet, datasets };
 }
 

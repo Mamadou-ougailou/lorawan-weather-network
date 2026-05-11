@@ -226,13 +226,13 @@ export function AlertsList({ items = [], compact = false, onResolve, onDelete })
             <span style={{ fontSize: 11, color: 'var(--text-2)', fontFamily: 'var(--font-mono)' }}>
               {a.triggeredAt ? new Date(a.triggeredAt).toLocaleString('fr') : '—'}
             </span>
-            {!a.resolvedAt && onResolve && (
+            {!a.resolvedAt && !a.isVirtual && onResolve && (
               <button className="btn btn-ghost" style={{ height: 26, padding: '0 8px', fontSize: 11.5 }}
                 onClick={() => onResolve(a.id)}>
                 {Icons.check} Résoudre
               </button>
             )}
-            {onDelete && (
+            {!a.isVirtual && onDelete && (
               <button className="icon-btn" style={{ width: 26, height: 26 }}
                 onClick={() => onDelete(a.id)}>
                 {Icons.trash}

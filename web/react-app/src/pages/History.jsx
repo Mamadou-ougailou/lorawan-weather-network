@@ -47,24 +47,23 @@ export default function History() {
 
       const dataMap = {};
       data.forEach(r => {
-        // L'API renvoie hourStart (camelCase) en UTC sans suffixe Z (ex: "2026-05-05 08:00:00")
-        // On ajoute 'Z' pour forcer JavaScript à l'interpréter comme UTC (sinon 2h de décalage)
         const raw = r.hourStart || r.hour_start || '';
         const d = new Date(raw.includes('Z') || raw.includes('+') ? raw : raw.replace(' ', 'T') + 'Z');
-        const key = `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}h`;
-        dataMap[key] = r;
+        d.setMinutes(0, 0, 0, 0);
+        dataMap[d.getTime()] = r;
       });
 
       const labels = [];
       const rows = [];
 
-      // On crée un tableau parfait allant de `Maintenant - X heures` à `Maintenant`
       for (let i = nbHours - 1; i >= 0; i--) {
         const t = new Date(now.getTime() - i * 3600000);
-        const key = `${t.getDate()}/${t.getMonth()+1} ${t.getHours()}h`;
+        t.setMinutes(0, 0, 0, 0);
+        const timestamp = t.getTime();
         
         const isLast = i === 0;
-        labels.push(isLast ? "Maintenant" : key);
+        const displayKey = `${t.getDate()}/${t.getMonth()+1} ${t.getHours()}h`;
+        labels.push(isLast ? "Maintenant" : displayKey);
         
         if (isLast && stLatest) {
           const latestData = { hour_start: t.toISOString() };
@@ -75,13 +74,10 @@ export default function History() {
             }
           });
           rows.push(latestData);
-        } else if (dataMap[key]) {
-          rows.push(dataMap[key]);
+        } else if (dataMap[timestamp]) {
+          rows.push(dataMap[timestamp]);
         } else {
-          // Point de donnée "vide" si le capteur n'a rien envoyé
-          rows.push({
-            hour_start: t.toISOString()
-          });
+          rows.push({ hour_start: t.toISOString() });
         }
       }
 
@@ -157,7 +153,7 @@ export default function History() {
       return `${d.getHours()}h${d.getMinutes() === 30 ? '30' : '00'}`;
     }
   };
-  const hasMetric = (key) => charts?.rows?.some(r => r[key] !== null);
+  const hasMetric = (key) => charts?.rows?.some(r => r[key] != null);
 
   return (
     <section className="animate-in fade-in duration-500">
@@ -200,12 +196,12 @@ export default function History() {
                     hasMetric('temperatureAvg') && {
                       label: 'Température (°C)',
                       data: charts.rows.map(r => r.temperatureAvg),
-                      borderColor: '#f97316', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yT',
+                      borderColor: '#f97316', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yT', spanGaps: true,
                     },
                     hasMetric('humidityAvg') && {
                       label: 'Humidité (%)',
                       data: charts.rows.map(r => r.humidityAvg),
-                      borderColor: '#38bdf8', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yH',
+                      borderColor: '#38bdf8', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yH', spanGaps: true,
                     },
                   ].filter(Boolean)}
                   options={{
@@ -251,7 +247,7 @@ export default function History() {
                   datasets={[{
                     label: 'Pression (hPa)',
                     data: charts.rows.map(r => r.pressureAvg),
-                    borderColor: '#a78bfa', fill: false, tension: 0.3, pointRadius: 2,
+                    borderColor: '#a78bfa', fill: false, tension: 0.3, pointRadius: 3, spanGaps: true,
                   }]}
                   options={{
                     scales: {
@@ -277,12 +273,12 @@ export default function History() {
                     hasMetric('windSpeedAvg') && {
                       label: 'Vitesse du vent (km/h)',
                       data: charts.rows.map(r => r.windSpeedAvg),
-                      borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yWind',
+                      borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yWind', spanGaps: true,
                     },
                     hasMetric('rainQuantityAvg') && {
                       label: 'Quantité de pluie (mm/min)',
                       data: charts.rows.map(r => r.rainQuantityAvg),
-                      borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 2, yAxisID: 'yRain',
+                      borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yRain', spanGaps: true,
                     }
                   ].filter(Boolean)}
                   options={{
