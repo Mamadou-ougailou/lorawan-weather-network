@@ -46,7 +46,7 @@ export default function AdminAlerts({ user }) {
   // Injection d'alertes virtuelles (même logique que Dashboard)
   const staleStations = stations.filter(s => 
     s.isActive && 
-    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 1.5 * 60 * 1000)) &&
+    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 5 * 60 * 1000)) &&
     !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
   );
 

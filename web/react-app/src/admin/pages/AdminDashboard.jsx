@@ -53,7 +53,7 @@ export default function AdminDashboard({ onPickStation, user }) {
   // Injection d'alertes virtuelles pour les stations inactives (fallback frontend)
   const staleStations = stations.filter(s => 
     s.isActive && 
-    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 1.5 * 60 * 1000)) &&
+    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 5 * 60 * 1000)) &&
     !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
   );
 
@@ -145,7 +145,7 @@ export default function AdminDashboard({ onPickStation, user }) {
                       const m = latest.find(l => l.siteId === s.id);
                       const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
                       const lastContact = s.lastSeenAt ? new Date(s.lastSeenAt) : null;
-                      const isStale = !lastContact || (new Date() - lastContact > 1.5 * 60 * 1000);
+                      const isStale = !lastContact || (new Date() - lastContact > 5 * 60 * 1000);
                       const tone = !s.isActive ? 'off' : ((isOfflineAlert || isStale) ? 'danger' : 'ok');
                     
                     return (
