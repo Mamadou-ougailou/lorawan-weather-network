@@ -65,15 +65,23 @@ export default function History() {
         const displayKey = `${t.getDate()}/${t.getMonth()+1} ${t.getHours()}h`;
         labels.push(isLast ? "Maintenant" : displayKey);
         
-        if (isLast && stLatest) {
-          const latestData = { hour_start: t.toISOString() };
-          mappings.forEach(m => {
-            const camelAlias = toCamel(m.alias);
-            if (stLatest[camelAlias] != null) {
-              latestData[`${camelAlias}Avg`] = stLatest[camelAlias];
-            }
-          });
-          rows.push(latestData);
+        if (isLast) {
+          // Fusionner les données historiques (si elles existent) avec les dernières mesures
+          // au lieu de remplacer — sinon on perd les métriques présentes dans l'historique
+          // mais absentes du latest (ex: pression avec une clé brute différente)
+          const base = dataMap[timestamp] || { hour_start: t.toISOString() };
+          if (stLatest) {
+            const latestOverlay = {};
+            mappings.forEach(m => {
+              const camelAlias = toCamel(m.alias);
+              if (stLatest[camelAlias] != null) {
+                latestOverlay[`${camelAlias}Avg`] = stLatest[camelAlias];
+              }
+            });
+            rows.push({ ...base, ...latestOverlay });
+          } else {
+            rows.push(base);
+          }
         } else if (dataMap[timestamp]) {
           rows.push(dataMap[timestamp]);
         } else {
@@ -183,7 +191,7 @@ export default function History() {
 
       {charts && (
         <div className="grid grid-cols-1 gap-6 relative z-10 mb-8">
-          {/* Temp & Hum Section */}
+          {/* Temp & Hum combined chart (dual Y-axis) */}
           {(hasMetric('temperatureAvg') || hasMetric('humidityAvg')) && (
             <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
               <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">
@@ -237,82 +245,55 @@ export default function History() {
             </div>
           )}
 
-          {/* Pressure Section */}
-          {hasMetric('pressureAvg') && (
-            <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
-              <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">Pression</h3>
-              <div className="relative h-[300px] w-full grow">
-                <WeatherChart
-                  labels={charts.labels}
-                  datasets={[{
-                    label: 'Pression (hPa)',
-                    data: charts.rows.map(r => r.pressureAvg),
-                    borderColor: '#a78bfa', fill: false, tension: 0.3, pointRadius: 3, spanGaps: true,
-                  }]}
-                  options={{
-                    scales: {
-                      x: { ticks: xAxisTicks },
-                      y: { grace: '5%' },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          )}
+          {/* Dynamic charts for all other available metrics */}
+          {(() => {
+            // Detect all *Avg keys present in the data, excluding temperature & humidity (already shown above)
+            const skip = new Set(['temperatureAvg', 'humidityAvg']);
+            const meta = new Set(['hourStart', 'hour_start', 'siteId', 'siteName', 'sampleCount', 'bucket']);
+            const avgKeys = charts.rows.length > 0
+              ? [...new Set(
+                  charts.rows.flatMap(r => Object.keys(r))
+                )].filter(k => k.endsWith('Avg') && !skip.has(k) && !meta.has(k) && hasMetric(k))
+              : [];
+            
+            const CHART_COLORS = ['#a78bfa', '#fde047', '#60a5fa', '#f472b6', '#4ade80', '#f87171', '#22d3ee', '#fb923c'];
 
-          {/* Wind & Rain Section */}
-          {(hasMetric('windSpeedAvg') || hasMetric('rainQuantityAvg')) && (
-            <div className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
-              <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">
-                {[hasMetric('windSpeedAvg') && 'Vent', hasMetric('rainQuantityAvg') && 'Pluie'].filter(Boolean).join(' & ')}
-              </h3>
-              <div className="relative h-[300px] lg:h-[400px] w-full grow">
-                <WeatherChart
-                  labels={charts.labels}
-                  datasets={[
-                    hasMetric('windSpeedAvg') && {
-                      label: 'Vitesse du vent (km/h)',
-                      data: charts.rows.map(r => r.windSpeedAvg),
-                      borderColor: '#fde047', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yWind', spanGaps: true,
-                    },
-                    hasMetric('rainQuantityAvg') && {
-                      label: 'Quantité de pluie (mm/min)',
-                      data: charts.rows.map(r => r.rainQuantityAvg),
-                      borderColor: '#60a5fa', fill: false, tension: 0.3, pointRadius: 3, yAxisID: 'yRain', spanGaps: true,
-                    }
-                  ].filter(Boolean)}
-                  options={{
-                    scales: {
-                      x: { ticks: xAxisTicks },
-                      yWind: { 
-                        display: hasMetric('windSpeedAvg'), 
-                        position: 'left', 
-                        title: { 
-                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
-                          text: 'km/h', 
-                          color: '#fde047' 
-                        }, 
-                        ticks: { color: '#fde047' }, 
-                        grace: '5%' 
-                      },
-                      yRain: { 
-                        display: hasMetric('rainQuantityAvg'), 
-                        position: 'right', 
-                        title: { 
-                          display: typeof window !== 'undefined' && window.innerWidth > 640, 
-                          text: 'mm', 
-                          color: '#f472b6' 
-                        }, 
-                        ticks: { color: '#f472b6' }, 
-                        grid: { drawOnChartArea: false }, 
-                        grace: '5%' 
-                      },
-                    },
-                  }}
-                />
-              </div>
-            </div>
-          )}
+            return avgKeys.map((key, i) => {
+              const baseKey = key.replace(/Avg$/, '');
+              const sensorInfo = getSensorMeta(baseKey);
+              const color = CHART_COLORS[i % CHART_COLORS.length];
+              return (
+                <div key={key} className="bg-surface-container-low rounded-xl p-6 md:p-8 border border-outline-variant shadow-sm flex flex-col">
+                  <h3 className="text-lg font-headline font-bold tracking-tight text-on-surface mb-6">
+                    {sensorInfo.label}
+                  </h3>
+                  <div className="relative h-[300px] w-full grow">
+                    <WeatherChart
+                      labels={charts.labels}
+                      datasets={[{
+                        label: `${sensorInfo.label} (${sensorInfo.unit})`,
+                        data: charts.rows.map(r => r[key]),
+                        borderColor: color, fill: false, tension: 0.3, pointRadius: 3, spanGaps: true,
+                      }]}
+                      options={{
+                        scales: {
+                          x: { ticks: xAxisTicks },
+                          y: { 
+                            grace: '5%',
+                            title: {
+                              display: typeof window !== 'undefined' && window.innerWidth > 640,
+                              text: sensorInfo.unit,
+                              color,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            });
+          })()}
         </div>
       )}
     </section>

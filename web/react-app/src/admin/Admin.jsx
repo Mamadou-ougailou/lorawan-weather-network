@@ -67,7 +67,7 @@ export default function Admin({ onBack }) {
           const virtualOffline = s.filter(st =>
             st.isActive &&
             st.lastSeenAt &&
-            (new Date() - new Date(st.lastSeenAt) > 1 * 60 * 1000) &&
+            (new Date() - new Date(st.lastSeenAt) > 5 * 60 * 1000) &&
             !dbActive.some(al => al.siteId === st.id && al.metric === 'offline')
           ).length;
           setAlertCount(dbActive.length + virtualOffline);
