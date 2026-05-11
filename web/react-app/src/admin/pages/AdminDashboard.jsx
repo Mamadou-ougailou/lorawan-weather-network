@@ -38,8 +38,14 @@ export default function AdminDashboard({ onPickStation, user }) {
 
   useEffect(() => { load(); }, []);
 
-  const handleResolve = (id) => resolveAlert(id).then(load).catch(console.error);
-  const handleDelete  = (id) => deleteAlert(id).then(load).catch(console.error);
+  const handleResolve = (id) => {
+    if (String(id).startsWith('v-')) return;
+    resolveAlert(id).then(load).catch(console.error);
+  };
+  const handleDelete = (id) => {
+    if (String(id).startsWith('v-')) return;
+    deleteAlert(id).then(load).catch(console.error);
+  };
 
   const active = stations.filter(s => s.isActive);
   const activeAlertsFromDB = alerts.filter(a => !a.resolvedAt);
@@ -47,8 +53,7 @@ export default function AdminDashboard({ onPickStation, user }) {
   // Injection d'alertes virtuelles pour les stations inactives (fallback frontend)
   const staleStations = stations.filter(s => 
     s.isActive && 
-    s.lastSeenAt && 
-    (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000) &&
+    (!s.lastSeenAt || (new Date() - new Date(s.lastSeenAt) > 1.5 * 60 * 1000)) &&
     !activeAlertsFromDB.some(a => a.siteId === s.id && a.metric === 'offline')
   );
 
@@ -57,8 +62,10 @@ export default function AdminDashboard({ onPickStation, user }) {
     siteId: s.id,
     siteName: s.name,
     metric: 'offline',
-    message: `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`,
-    triggeredAt: s.lastSeenAt,
+    message: s.lastSeenAt 
+      ? `Station inactive depuis ${fmt.timeAgo(s.lastSeenAt)}`
+      : 'Station n\'a jamais publié de données',
+    triggeredAt: s.lastSeenAt || new Date().toISOString(),
     isVirtual: true
   }));
 
@@ -134,11 +141,12 @@ export default function AdminDashboard({ onPickStation, user }) {
               <th className="num">Humidité</th>
             </tr></thead>
             <tbody>
-                  {stations.slice(0, 6).map(s => {
-                    const m = latest.find(l => l.siteId === s.id);
-                    const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
-                    const isStale = s.lastSeenAt && (new Date() - new Date(s.lastSeenAt) > 45 * 60 * 1000);
-                    const tone = !s.isActive ? 'off' : ((isOfflineAlert || isStale) ? 'danger' : 'ok');
+                    {stations.slice(0, 6).map(s => {
+                      const m = latest.find(l => l.siteId === s.id);
+                      const isOfflineAlert = alerts.some(a => a.siteId === s.id && a.metric === 'offline' && !a.resolvedAt);
+                      const lastContact = s.lastSeenAt ? new Date(s.lastSeenAt) : null;
+                      const isStale = !lastContact || (new Date() - lastContact > 1.5 * 60 * 1000);
+                      const tone = !s.isActive ? 'off' : ((isOfflineAlert || isStale) ? 'danger' : 'ok');
                     
                     return (
                       <tr key={s.id} onClick={() => onPickStation && onPickStation(s)} style={{ cursor: 'pointer' }}>

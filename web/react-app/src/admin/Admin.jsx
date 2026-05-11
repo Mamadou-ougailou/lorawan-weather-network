@@ -6,7 +6,7 @@ import React, { useState, useEffect } from 'react';
 import './styles.css';
 
 import { AdminSidebar, AdminTopbar } from './AdminShell.jsx';
-import { fetchAlerts } from './adminApi.js';
+import { fetchAlerts, fetchStations } from './adminApi.js';
 
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import AdminStations  from './pages/AdminStations.jsx';
@@ -57,12 +57,21 @@ export default function Admin({ onBack }) {
   const [theme, setTheme]         = useState(() => localStorage.getItem('admin-theme') || 'light');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Poll active alert count for sidebar badge
+  // Poll active alert count for sidebar badge (DB alerts + virtual offline)
   useEffect(() => {
     if (!auth) return;
     const refresh = () =>
-      fetchAlerts()
-        .then(a => setAlertCount(a.filter(al => !al.resolvedAt).length))
+      Promise.all([fetchAlerts(), fetchStations()])
+        .then(([a, s]) => {
+          const dbActive = a.filter(al => !al.resolvedAt);
+          const virtualOffline = s.filter(st =>
+            st.isActive &&
+            st.lastSeenAt &&
+            (new Date() - new Date(st.lastSeenAt) > 1 * 60 * 1000) &&
+            !dbActive.some(al => al.siteId === st.id && al.metric === 'offline')
+          ).length;
+          setAlertCount(dbActive.length + virtualOffline);
+        })
         .catch(() => {});
     refresh();
     const id = setInterval(refresh, 30_000);
