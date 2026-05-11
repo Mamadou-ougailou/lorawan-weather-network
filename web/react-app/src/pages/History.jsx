@@ -112,16 +112,28 @@ export default function History() {
     
     const csvRows = [headers.join(';')];
 
-    charts.rows.forEach(r => {
+    charts.rows.forEach((r, idx) => {
       let dateStr = '';
       let timeStr = '';
-      if (r.hour_start) {
-        const d = new Date(r.hour_start);
+      const rawDate = r.hourStart || r.hour_start || '';
+      if (rawDate) {
+        const d = new Date(rawDate);
         if (!isNaN(d)) {
           dateStr = d.toLocaleDateString('fr-FR');
           timeStr = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
         } else {
-          dateStr = r.hour_start;
+          dateStr = rawDate;
+        }
+      }
+      // Fallback : utiliser le label du graphique si la date n'a pas pu être extraite
+      if (!dateStr && charts.labels[idx]) {
+        const label = charts.labels[idx];
+        if (label === 'Maintenant') {
+          const now = new Date();
+          dateStr = now.toLocaleDateString('fr-FR');
+          timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        } else {
+          dateStr = label;
         }
       }
       
